@@ -183,6 +183,7 @@ test('normalizeSkillRoadmapItem distills raw gap data into the 6 concise student
   const firstGap = careerResult.targetRoleGap.gaps[0]
   const item = normalizeSkillRoadmapItem(firstGap, 'Data Analyst', new Set(), {}, 0)
 
+  assert.equal(item.stepNumber, 1)
   assert.ok(['High', 'Medium', 'Low'].includes(item.priorityLabel))
   assert.ok(item.whatToLearn.length > 15 && item.whatToLearn.length < 220)
   assert.ok(item.actionSteps.length >= 3 && item.actionSteps.length <= 4)
@@ -209,6 +210,11 @@ test('buildRoadmapDocumentModel organizes roadmap into 3 clear preparation stage
   assert.equal(model.stages[0].title, 'Stage 1 - Learn the Essentials')
   assert.equal(model.stages[1].title, 'Stage 2 - Practise and Build')
   assert.equal(model.stages[2].title, 'Stage 3 - Prepare for Opportunities')
+  const stepNumbers = model.stages
+    .flatMap((stage) => stage.items)
+    .map((skill) => skill.stepNumber)
+    .sort((a, b) => a - b)
+  assert.deepEqual(stepNumbers, stepNumbers.map((_, index) => index + 1))
   assert.ok(model.finalChecklist.length >= 3)
 })
 

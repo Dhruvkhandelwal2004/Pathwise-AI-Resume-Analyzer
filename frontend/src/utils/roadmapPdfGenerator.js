@@ -287,6 +287,7 @@ export function normalizeSkillRoadmapItem(gap, arg2, arg3, arg4, arg5) {
     id,
     criterionId: id,
     index: index + 1,
+    stepNumber: index + 1,
     skillName,
     kind: sanitizePdfText(gap?.kind || 'skill'),
     priorityLevel,

@@ -100,6 +100,18 @@ class StructuredOutputRetryTests(unittest.TestCase):
         self.assertIn("improvementSuggestions", prompt)
         self.assertNotIn('"education"', prompt)
 
+    def test_qwen_fallback_uses_compact_non_reasoning_budget(self):
+        client = CompletionStub()
+
+        _create_json_completion(
+            client,
+            "qwen/qwen3.8-27b",
+            "Student resume text",
+        )
+
+        self.assertEqual(client.request["max_completion_tokens"], 900)
+        self.assertEqual(client.request["reasoning_effort"], "none")
+
     def test_two_pass_schemas_preserve_all_final_analysis_fields(self):
         all_keys = set(RESUME_PROFILE_SCHEMA["required"]) | set(
             RESUME_GUIDANCE_SCHEMA["required"]

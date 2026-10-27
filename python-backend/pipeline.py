@@ -44,6 +44,7 @@ DEFAULT_FALLBACK_MODEL = "openai/gpt-oss-20b"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_RETRIES = 2
 DEFAULT_MAX_COMPLETION_TOKENS = 2_048
+QWEN_MAX_COMPLETION_TOKENS = 900
 STRUCTURED_OUTPUT_ATTEMPTS = 2
 DRIVE_FILE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{10,200}$")
 RETRYABLE_STRUCTURED_OUTPUT_CODES = {
@@ -250,6 +251,14 @@ def _create_json_completion(
     task_instruction: str = PROFILE_TASK,
 ):
     schema = json.dumps(response_schema, separators=(",", ":"))
+    is_qwen_model = model.startswith("qwen/")
+    max_completion_tokens = _max_completion_tokens()
+    if is_qwen_model:
+        max_completion_tokens = min(
+            max_completion_tokens,
+            QWEN_MAX_COMPLETION_TOKENS,
+        )
+
     return client.chat.completions.create(
         model=model,
         messages=[
@@ -277,10 +286,11 @@ def _create_json_completion(
             },
         },
         temperature=0,
-        max_completion_tokens=_max_completion_tokens(),
-        # GPT-OSS reasoning tokens share the completion budget. Low effort
-        # preserves room for every required JSON field on resume extraction.
-        reasoning_effort="low",
+        max_completion_tokens=max_completion_tokens,
+        # Qwen's on-demand tier has a smaller output-token-per-minute budget.
+        # Disabling reasoning keeps its fallback request below that hard cap.
+        # GPT-OSS keeps low reasoning effort so required JSON fields have room.
+        reasoning_effort="none" if is_qwen_model else "low",
     )
 
 

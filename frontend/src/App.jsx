@@ -609,7 +609,6 @@ export function App() {
   return (
     <div className="enhancv-app-shell" id="top">
       <Navbar
-        candidateName={latestRecord?.analysis?.name}
         activeTargetRole={careerPlanState.activePlan?.targetRoleTitle}
         isAnalyzed={Boolean(latestRecord) && location.pathname !== '/'}
         isLoading={loading}

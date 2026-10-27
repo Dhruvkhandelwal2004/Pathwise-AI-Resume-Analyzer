@@ -4,14 +4,12 @@ import {
   BookOpen,
   UploadCloud,
   ShieldCheck,
-  FileText,
   Target,
   Gauge,
   Map,
 } from 'lucide-react'
 
 export function Navbar({
-  candidateName,
   activeTargetRole,
   isAnalyzed,
   isLoading = false,
@@ -22,7 +20,7 @@ export function Navbar({
 }) {
   return (
     <header className="enhancv-navbar">
-      <div className="navbar-container">
+      <div className={`navbar-container ${isAnalyzed ? 'is-analyzed' : 'is-landing'}`}>
         <div className="navbar-brand-group">
           <Link
             to="/"
@@ -62,13 +60,6 @@ export function Navbar({
                 <span>3. Skills Roadmap</span>
               </NavLink>
             </nav>
-          )}
-
-          {!isLoading && isAnalyzed && candidateName && (
-            <div className="navbar-candidate-pill">
-              <FileText size={14} className="pill-icon" />
-              <span className="candidate-name" title={candidateName}>{candidateName}</span>
-            </div>
           )}
 
           {!isLoading && isAnalyzed && activeTargetRole && (
