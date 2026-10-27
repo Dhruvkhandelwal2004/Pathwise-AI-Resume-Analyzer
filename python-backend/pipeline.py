@@ -5,11 +5,14 @@ import json
 import os
 import re
 import unicodedata
+import zipfile
+from xml.etree import ElementTree
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 from dotenv import load_dotenv
+from legacy_doc import LegacyDocError, extract_text as extract_legacy_doc
 from groq import (
     APIConnectionError,
     APIStatusError,
@@ -37,8 +40,37 @@ from models import (
 )
 
 
-MAX_PDF_BYTES = 5 * 1024 * 1024
+MAX_RESUME_BYTES = 5 * 1024 * 1024
+MAX_PDF_BYTES = MAX_RESUME_BYTES
 MAX_PAGES = 100
+MAX_DOCX_ENTRIES = 500
+MAX_DOCX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024
+MAX_DOCX_ENTRY_BYTES = 10 * 1024 * 1024
+PDF_SIGNATURE = b"%PDF-"
+OLE_SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+ZIP_SIGNATURES = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+WORD_DOCUMENT_STREAM = "WordDocument".encode("utf-16le")
+SUPPORTED_RESUME_MIME_TYPES = {
+    ".pdf": {
+        "application/pdf",
+        "application/x-pdf",
+        "application/octet-stream",
+    },
+    ".doc": {
+        "application/msword",
+        "application/vnd.ms-word",
+        "application/x-ole-storage",
+        "application/cdfv2",
+        "application/octet-stream",
+    },
+    ".docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/zip",
+        "application/x-zip-compressed",
+        "application/octet-stream",
+    },
+}
+WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 DEFAULT_FALLBACK_MODEL = "openai/gpt-oss-20b"
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -167,6 +199,172 @@ def normalize_text(text: str) -> str:
     normalized = re.sub(r" *\n *", "\n", normalized)
     normalized = re.sub(r"\n{3,}", "\n\n", normalized)
     return normalized.strip()
+
+
+def validate_document_metadata(filename: str | None, content_type: str | None) -> str:
+    extension = Path(filename or "").suffix.lower()
+    allowed_mime_types = SUPPORTED_RESUME_MIME_TYPES.get(extension)
+    normalized_mime = (content_type or "").split(";", 1)[0].strip().lower()
+
+    if not allowed_mime_types:
+        raise PipelineError("invalid_resume_file", 415)
+    if normalized_mime and normalized_mime not in allowed_mime_types:
+        raise PipelineError("invalid_resume_file", 415)
+    return extension.removeprefix(".")
+
+
+def _validate_docx_archive(document_bytes: bytes) -> None:
+    if not document_bytes.startswith(ZIP_SIGNATURES):
+        raise PipelineError("invalid_resume_file", 415)
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(document_bytes)) as archive:
+            entries = archive.infolist()
+            if not entries or len(entries) > MAX_DOCX_ENTRIES:
+                raise PipelineError("invalid_resume_file", 415)
+
+            total_uncompressed = 0
+            normalized_names: set[str] = set()
+            for entry in entries:
+                normalized_name = entry.filename.replace("\\", "/")
+                path_parts = [part for part in normalized_name.split("/") if part]
+                if (
+                    normalized_name.startswith("/")
+                    or ".." in path_parts
+                    or entry.flag_bits & 0x1
+                    or entry.file_size > MAX_DOCX_ENTRY_BYTES
+                ):
+                    raise PipelineError("invalid_resume_file", 415)
+                total_uncompressed += entry.file_size
+                if total_uncompressed > MAX_DOCX_UNCOMPRESSED_BYTES:
+                    raise PipelineError("invalid_resume_file", 415)
+                normalized_names.add(normalized_name)
+
+            required_entries = {"[Content_Types].xml", "word/document.xml"}
+            if not required_entries.issubset(normalized_names):
+                raise PipelineError("invalid_resume_file", 415)
+
+            content_types = archive.read("[Content_Types].xml")
+            if b"wordprocessingml.document.main+xml" not in content_types:
+                raise PipelineError("invalid_resume_file", 415)
+    except PipelineError:
+        raise
+    except (KeyError, OSError, ValueError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise PipelineError("invalid_resume_file", 415) from exc
+
+
+def detect_document_type(
+    document_bytes: bytes,
+    filename: str | None,
+    content_type: str | None,
+) -> str:
+    file_type = validate_document_metadata(filename, content_type)
+
+    if file_type == "pdf":
+        if not document_bytes.startswith(PDF_SIGNATURE):
+            raise PipelineError("invalid_resume_file", 415)
+        return file_type
+
+    if file_type == "doc":
+        if not (
+            document_bytes.startswith(OLE_SIGNATURE)
+            and WORD_DOCUMENT_STREAM in document_bytes
+        ):
+            raise PipelineError("invalid_resume_file", 415)
+        return file_type
+
+    _validate_docx_archive(document_bytes)
+    return file_type
+
+
+def _safe_word_xml_text(xml_bytes: bytes) -> str:
+    lowered = xml_bytes.lower()
+    if b"<!doctype" in lowered or b"<!entity" in lowered:
+        raise PipelineError("invalid_resume_file", 415)
+
+    try:
+        root = ElementTree.fromstring(xml_bytes)
+    except ElementTree.ParseError as exc:
+        raise PipelineError("invalid_resume_file", 415) from exc
+
+    paragraph_tag = f"{{{WORD_NAMESPACE}}}p"
+    text_tag = f"{{{WORD_NAMESPACE}}}t"
+    tab_tag = f"{{{WORD_NAMESPACE}}}tab"
+    break_tags = {f"{{{WORD_NAMESPACE}}}br", f"{{{WORD_NAMESPACE}}}cr"}
+    paragraphs: list[str] = []
+
+    for paragraph in root.iter(paragraph_tag):
+        fragments: list[str] = []
+        for node in paragraph.iter():
+            if node.tag == text_tag and node.text:
+                fragments.append(node.text)
+            elif node.tag == tab_tag:
+                fragments.append("\t")
+            elif node.tag in break_tags:
+                fragments.append("\n")
+        paragraph_text = "".join(fragments).strip()
+        if paragraph_text:
+            paragraphs.append(paragraph_text)
+
+    return "\n".join(paragraphs)
+
+
+def extract_docx_text(document_bytes: bytes) -> tuple[str, None]:
+    _validate_docx_archive(document_bytes)
+    try:
+        with zipfile.ZipFile(io.BytesIO(document_bytes)) as archive:
+            names = set(archive.namelist())
+            document_names = ["word/document.xml"]
+            document_names.extend(
+                sorted(
+                    name
+                    for name in names
+                    if re.fullmatch(r"word/(?:header|footer)\d+\.xml", name)
+                )
+            )
+            text = "\n\n".join(
+                _safe_word_xml_text(archive.read(name))
+                for name in document_names
+                if name in names
+            )
+    except PipelineError:
+        raise
+    except (KeyError, OSError, ValueError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise PipelineError("invalid_resume_file", 415) from exc
+
+    normalized = normalize_text(text)
+    if not normalized:
+        raise PipelineError("textless_document", 422)
+    return normalized, None
+
+
+def extract_doc_text(document_bytes: bytes) -> tuple[str, int | None]:
+    try:
+        result = extract_legacy_doc(document_bytes)
+    except LegacyDocError as exc:
+        raise PipelineError("invalid_resume_file", 415) from exc
+
+    normalized = normalize_text(result.text)
+    if not normalized:
+        raise PipelineError("textless_document", 422)
+
+    page_count = result.metadata.get("page_count")
+    if not isinstance(page_count, int) or page_count < 1:
+        page_count = None
+    return normalized, page_count
+
+
+def extract_document_text(
+    document_bytes: bytes,
+    file_type: str,
+) -> tuple[str, int | None]:
+    if file_type == "pdf":
+        return extract_pdf_text(document_bytes)
+    if file_type == "doc":
+        return extract_doc_text(document_bytes)
+    if file_type == "docx":
+        return extract_docx_text(document_bytes)
+    raise PipelineError("invalid_resume_file", 415)
 
 
 def extract_pdf_text(pdf_bytes: bytes) -> tuple[str, int]:
@@ -440,19 +638,18 @@ def analyze_resume_text(text: str) -> tuple[ResumeAnalysis, str]:
     return analysis, used_model
 
 
-def analyze_pdf_bytes(pdf_bytes: bytes, source: str) -> dict:
-    if len(pdf_bytes) > MAX_PDF_BYTES:
-        raise PipelineError("pdf_too_large", 413)
-    if not pdf_bytes.startswith(b"%PDF-"):
-        raise PipelineError("file_not_pdf", 415)
-
-    text, page_count = extract_pdf_text(pdf_bytes)
+def _analyze_extracted_document(
+    document_bytes: bytes,
+    source: str,
+    file_type: str,
+) -> dict:
+    text, page_count = extract_document_text(document_bytes, file_type)
     text_characters = len(text)
     try:
         analysis, model = analyze_resume_text(text)
     finally:
         text = ""
-        pdf_bytes = b""
+        document_bytes = b""
 
     analysis_payload = analysis.model_dump(by_alias=True)
     analysis_payload["educationScore"] = build_education_score(
@@ -465,11 +662,32 @@ def analyze_pdf_bytes(pdf_bytes: bytes, source: str) -> dict:
         "metadata": {
             "source": source,
             "pageCount": page_count,
+            "fileType": file_type.upper(),
             "textCharacters": text_characters,
             "provider": "groq",
             "model": model,
         },
     }
+
+
+def analyze_document_bytes(
+    document_bytes: bytes,
+    source: str,
+    filename: str | None,
+    content_type: str | None,
+) -> dict:
+    if len(document_bytes) > MAX_RESUME_BYTES:
+        raise PipelineError("resume_file_too_large", 413)
+    file_type = detect_document_type(document_bytes, filename, content_type)
+    return _analyze_extracted_document(document_bytes, source, file_type)
+
+
+def analyze_pdf_bytes(pdf_bytes: bytes, source: str) -> dict:
+    if len(pdf_bytes) > MAX_PDF_BYTES:
+        raise PipelineError("pdf_too_large", 413)
+    if not pdf_bytes.startswith(PDF_SIGNATURE):
+        raise PipelineError("file_not_pdf", 415)
+    return _analyze_extracted_document(pdf_bytes, source, "pdf")
 
 
 def analyze_drive_resume(url: str) -> dict:

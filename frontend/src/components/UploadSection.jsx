@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import {
   UploadCloud,
-  Link2,
   FileText,
   X,
   Sparkles,
@@ -18,59 +17,86 @@ import {
   GraduationCap,
   Users,
   Check,
+  AlertCircle,
+  ArrowUp,
 } from 'lucide-react'
+import {
+  RESUME_FILE_VALIDATION_MESSAGE,
+  validateResumeFile,
+} from '../utils/resumeFileValidation.js'
+import {
+  smoothScrollToElement,
+  smoothScrollToTop,
+} from '../utils/smoothScroll.js'
 
-export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode = 'upload' }) {
-  const [mode, setMode] = useState(initialMode)
+export function UploadDropzone({
+  onAnalyze,
+  loading,
+  onFileChange,
+  validationError = '',
+  onValidationErrorChange,
+}) {
   const [file, setFile] = useState(null)
-  const [driveUrl, setDriveUrl] = useState('')
   const [dragging, setDragging] = useState(false)
+  const [fileError, setFileError] = useState('')
   const inputRef = useRef(null)
+  const validationSequenceRef = useRef(0)
 
-  const pickFile = (candidate) => {
-    if (candidate) {
-      setFile(candidate)
-      if (onFileChange) onFileChange(candidate)
+  const updateFileError = (message) => {
+    setFileError(message)
+    onValidationErrorChange?.(message)
+  }
+
+  const clearSelectedFile = () => {
+    validationSequenceRef.current += 1
+    setFile(null)
+    setFileError('')
+    onValidationErrorChange?.('')
+    onFileChange?.(null)
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  const pickFile = async (candidate) => {
+    const validationSequence = validationSequenceRef.current + 1
+    validationSequenceRef.current = validationSequence
+    setFile(null)
+    setFileError('')
+    onValidationErrorChange?.('')
+    onFileChange?.(null)
+
+    if (!candidate) return
+
+    const validation = await validateResumeFile(candidate)
+    if (validationSequence !== validationSequenceRef.current) return
+
+    if (!validation.valid) {
+      updateFileError(validation.message || RESUME_FILE_VALIDATION_MESSAGE)
+      if (inputRef.current) inputRef.current.value = ''
+      return
     }
+
+    setFile(candidate)
+    onFileChange?.(candidate)
   }
 
   const submit = () => {
-    if (mode === 'upload' && file) onAnalyze({ mode, file })
-    if (mode === 'drive' && driveUrl.trim()) {
-      onAnalyze({ mode, driveUrl: driveUrl.trim() })
-    }
+    if (file) onAnalyze({ file })
   }
 
-  const ready = mode === 'upload' ? Boolean(file) : Boolean(driveUrl.trim())
+  const displayedFileError = fileError || validationError
+  const ready = Boolean(file) && !displayedFileError
 
   return (
     <div className="enhancv-upload-box card">
-      <div className="upload-tabs-bar" role="tablist">
-        <button
-          type="button"
-          className={`upload-tab ${mode === 'upload' ? 'is-active' : ''}`}
-          role="tab"
-          aria-selected={mode === 'upload'}
-          onClick={() => setMode('upload')}
-        >
+      <div className="upload-tabs-bar is-single">
+        <div className="upload-tab is-active">
           <UploadCloud size={16} />
-          <span>Upload PDF</span>
-        </button>
-        <button
-          type="button"
-          className={`upload-tab ${mode === 'drive' ? 'is-active' : ''}`}
-          role="tab"
-          aria-selected={mode === 'drive'}
-          onClick={() => setMode('drive')}
-        >
-          <Link2 size={16} />
-          <span>Google Drive Link</span>
-        </button>
+          <span>Upload Resume/CV</span>
+        </div>
       </div>
 
-      {mode === 'upload' ? (
-        <div
-          className={`enhancv-dropzone ${dragging ? 'is-dragging' : ''} ${file ? 'has-file' : ''}`}
+      <div
+          className={`enhancv-dropzone ${dragging ? 'is-dragging' : ''} ${file ? 'has-file' : ''} ${displayedFileError ? 'has-error' : ''}`}
           onDragEnter={(e) => {
             e.preventDefault()
             setDragging(true)
@@ -80,7 +106,12 @@ export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode =
           onDrop={(e) => {
             e.preventDefault()
             setDragging(false)
-            pickFile(e.dataTransfer.files?.[0])
+            if (e.dataTransfer.files?.length !== 1) {
+              clearSelectedFile()
+              updateFileError(RESUME_FILE_VALIDATION_MESSAGE)
+              return
+            }
+            void pickFile(e.dataTransfer.files[0])
           }}
           onClick={() => !file && inputRef.current?.click()}
           role="button"
@@ -94,8 +125,8 @@ export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode =
           <input
             ref={inputRef}
             type="file"
-            accept="application/pdf,.pdf"
-            onChange={(e) => pickFile(e.target.files?.[0])}
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(e) => void pickFile(e.target.files?.[0])}
             hidden
           />
 
@@ -106,7 +137,9 @@ export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode =
               </div>
               <div className="file-details">
                 <strong>{file.name}</strong>
-                <span>{(file.size / (1024 * 1024)).toFixed(2)} MB · Valid PDF</span>
+                <span>
+                  {(file.size / (1024 * 1024)).toFixed(2)} MB · Valid {file.name.split('.').pop()?.toUpperCase()} file
+                </span>
               </div>
               <button
                 type="button"
@@ -114,8 +147,7 @@ export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode =
                 aria-label="Remove selected file"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setFile(null)
-                  if (inputRef.current) inputRef.current.value = ''
+                  clearSelectedFile()
                 }}
               >
                 <X size={16} />
@@ -126,30 +158,19 @@ export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode =
               <div className="upload-cloud-icon">
                 <UploadCloud size={30} />
               </div>
-              <h4>Drag &amp; drop your resume PDF here</h4>
+              <h4>Drag &amp; drop your resume file here</h4>
               <p>or click to browse from your device</p>
               <div className="dropzone-limits">
-                <span>PDF only · Maximum 5 MB · In-memory processing</span>
+                <span>PDF, DOC, or DOCX · Maximum 5 MB · In-memory processing</span>
               </div>
             </div>
           )}
-        </div>
-      ) : (
-        <div className="enhancv-drive-input-box">
-          <label htmlFor="drive-url-field">Public Google Drive Share Link</label>
-          <div className="drive-input-row">
-            <Link2 size={18} className="drive-icon" />
-            <input
-              id="drive-url-field"
-              type="url"
-              placeholder="https://drive.google.com/file/d/FILE_ID/view"
-              value={driveUrl}
-              onChange={(e) => setDriveUrl(e.target.value)}
-            />
-          </div>
-          <small className="drive-note">
-            Ensure sharing permissions are set to “Anyone with the link can view”.
-          </small>
+      </div>
+
+      {displayedFileError && (
+        <div className="upload-inline-error" role="alert">
+          <AlertCircle size={16} />
+          <span>{displayedFileError}</span>
         </div>
       )}
 
@@ -171,13 +192,30 @@ export function UploadDropzone({ onAnalyze, loading, onFileChange, initialMode =
   )
 }
 
-export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
+export function UploadHeroSection({
+  onAnalyze,
+  loading,
+  onOpenUpload,
+  uploadError,
+  onUploadErrorChange,
+}) {
   const uploadBoxRef = useRef(null)
   const [openFaqIndex, setOpenFaqIndex] = useState(null)
+  const [showBackToTop, setShowBackToTop] = useState(false)
+
+  useEffect(() => {
+    const updateBackToTopVisibility = () => {
+      setShowBackToTop(window.scrollY > 600)
+    }
+
+    updateBackToTopVisibility()
+    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true })
+    return () => window.removeEventListener('scroll', updateBackToTopVisibility)
+  }, [])
 
   const scrollToUpload = () => {
     if (uploadBoxRef.current) {
-      uploadBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      smoothScrollToElement('upload-workspace', 110)
     } else if (onOpenUpload) {
       onOpenUpload()
     }
@@ -194,8 +232,8 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
   const featureHighlights = [
     {
       icon: FileText,
-      title: 'PDF / Drive Link',
-      desc: 'Upload any resume document',
+      title: 'PDF, DOC & DOCX',
+      desc: 'Upload a supported resume file',
     },
     {
       icon: Sparkles,
@@ -219,7 +257,7 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
       num: '01',
       icon: UploadCloud,
       title: 'Upload',
-      desc: 'Upload your resume in PDF format or paste a public Google Drive link.',
+      desc: 'Upload a PDF, DOC, or DOCX resume file from your device.',
     },
     {
       num: '02',
@@ -248,7 +286,7 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
       title: 'Audit resumes with ease.',
       desc: 'Evaluate structure, measurable impact, and keyword readiness from a single dashboard.',
       bullets: [
-        'Upload PDF or import via Google Drive link',
+        'Upload a PDF, DOC, or DOCX resume file',
         'AI-powered extraction with strict schema fallback',
         '100-point deterministic rubric across 10 sections',
         'Distortion risk and global formatting checks',
@@ -324,6 +362,34 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
       a: 'ATS (Applicant Tracking System) is software that companies use to filter resumes before a human ever sees them. Your ATS score tells you how well your resume is optimized to pass these filters. A higher ATS score means better visibility to recruiters during campus placements and job applications.',
     },
     {
+      q: 'What is an ATS-friendly resume?',
+      intro: 'An ATS-friendly resume uses a clean, text-based layout that an Applicant Tracking System can parse reliably. Use standard section headings, readable fonts, a simple structure, and relevant keywords that truthfully reflect your experience.',
+      closing: 'Avoid scanned pages, heavy graphics, complex tables, multiple columns, and text boxes that can make important details difficult to extract. You can upload your PDF to Pathwise to check which resume evidence is detected and which sections may need attention.',
+    },
+    {
+      q: 'How to create an ATS-friendly resume?',
+      intro: 'Create an ATS-friendly resume with a simple, text-based structure that keeps important information easy for both software and recruiters to read:',
+      bullets: [
+        'Use a clean single-column layout with readable, conventional fonts.',
+        'Use standard section headings such as Work Experience, Skills, Education, and Projects.',
+        'Include relevant job-description keywords only where they truthfully match your experience.',
+        'Describe achievements with clear action verbs and measurable results when available.',
+        'Avoid scanned pages, logos, heavy graphics, complex tables, columns, and text boxes.',
+        'Export a text-based PDF and confirm that its text can be selected and copied.',
+      ],
+      closing: 'Upload the finished PDF to Pathwise to review the extracted evidence, section completeness, and areas that may need clearer documentation.',
+    },
+    {
+      q: 'Can ATS read PDF resumes?',
+      intro: 'Yes, many modern Applicant Tracking Systems can read text-based PDF resumes, but the way the PDF is created matters:',
+      bullets: [
+        'Text-based PDFs exported from a word processor usually work well because their text remains selectable and parseable.',
+        'Scanned or photographed PDFs can fail parsing because their content may be stored as an image instead of text.',
+        'PDFs with complex columns, heavy graphics, tables, or text boxes can be harder for some systems to process correctly.',
+      ],
+      closing: 'Always follow the file-format instructions in the job posting. Pathwise accepts PDF, DOC, and DOCX uploads and can help you verify whether the resume text and evidence are being extracted clearly.',
+    },
+    {
       q: 'How is my resume score calculated?',
       a: 'Your resume score is based on multiple factors — ATS compatibility, keyword relevance, completeness of sections like education, skills, projects, and summary, measurable impact, and overall formatting. Each factor contributes to your final score, along with actionable tips to improve it.',
     },
@@ -345,7 +411,7 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
     },
     {
       q: 'What file format should I upload my resume in, and can I re-upload after making changes?',
-      a: 'Pathwise Resume Analyzer accepts resumes in PDF format (up to 10MB) or via a public Google Drive PDF link. After making the suggested edits, you can re-upload your updated resume anytime to track how your ATS score improves!',
+      a: 'Pathwise Resume Analyzer accepts PDF, DOC, and DOCX resume uploads up to 5 MB. After making the suggested edits, you can re-upload your updated resume anytime to track how your ATS score improves!',
     },
   ]
 
@@ -375,7 +441,7 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
             </h1>
 
             <p className="pw-hero-subtitle">
-              Upload your resume PDF, extract verified evidence with AI, calculate a 100-point ATS score, match against 21 career roles, and follow a personalized skills roadmap from one platform.
+              Upload your PDF, DOC, or DOCX resume, extract verified evidence with AI, calculate a 100-point ATS score, match against 21 career roles, and follow a personalized skills roadmap from one platform.
             </p>
 
             <div className="pw-hero-actions">
@@ -564,7 +630,7 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
         <div className="pw-container">
           <div className="pw-section-heading">
             <span className="pw-eyebrow-pill">HOW IT WORKS</span>
-            <h2>From resume PDF to career roadmap in minutes.</h2>
+            <h2>From resume file to career roadmap in minutes.</h2>
             <p>A simple, evidence-backed workflow designed for students and job seekers.</p>
           </div>
 
@@ -586,7 +652,12 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
 
           {/* Interactive Upload Workspace */}
           <div className="pw-inline-upload-wrap" ref={uploadBoxRef} id="upload-workspace">
-            <UploadDropzone onAnalyze={onAnalyze} loading={loading} />
+            <UploadDropzone
+              onAnalyze={onAnalyze}
+              loading={loading}
+              validationError={uploadError}
+              onValidationErrorChange={onUploadErrorChange}
+            />
           </div>
         </div>
       </section>
@@ -727,7 +798,14 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
                   <ChevronDown size={17} className="pw-faq-chevron" />
                 </summary>
                 <div className="pw-faq-body">
-                  <p>{f.a}</p>
+                  {f.a && <p>{f.a}</p>}
+                  {f.intro && <p>{f.intro}</p>}
+                  {f.bullets && (
+                    <ul>
+                      {f.bullets.map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                  )}
+                  {f.closing && <p>{f.closing}</p>}
                 </div>
               </details>
             ))}
@@ -757,6 +835,23 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
           </div>
         </div>
       </section>
+
+      <button
+        type="button"
+        className={`pw-back-to-top ${showBackToTop ? 'is-visible' : ''}`}
+        aria-label="Back to top"
+        title="Back to top"
+        onClick={() => {
+          smoothScrollToTop()
+          window.history.replaceState(
+            null,
+            '',
+            `${window.location.pathname}${window.location.search}`,
+          )
+        }}
+      >
+        <ArrowUp size={20} strokeWidth={2.4} />
+      </button>
     </div>
   )
 }

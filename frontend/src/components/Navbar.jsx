@@ -8,6 +8,10 @@ import {
   Gauge,
   Map,
 } from 'lucide-react'
+import {
+  smoothScrollToElement,
+  smoothScrollToTop,
+} from '../utils/smoothScroll.js'
 
 export function Navbar({
   activeTargetRole,
@@ -18,6 +22,21 @@ export function Navbar({
   onNewUpload,
   onResetHome,
 }) {
+  const scrollToLandingSection = (event, sectionId) => {
+    event.preventDefault()
+
+    if (sectionId === 'overview') {
+      smoothScrollToTop()
+    } else {
+      smoothScrollToElement(sectionId)
+    }
+
+    const nextUrl = sectionId === 'overview'
+      ? `${window.location.pathname}${window.location.search}`
+      : `${window.location.pathname}${window.location.search}#${sectionId}`
+    window.history.replaceState(null, '', nextUrl)
+  }
+
   return (
     <header className="enhancv-navbar">
       <div className={`navbar-container ${isAnalyzed ? 'is-analyzed' : 'is-landing'}`}>
@@ -75,20 +94,14 @@ export function Navbar({
             <a
               href="#overview"
               className="pw-nav-link"
-              onClick={(e) => {
-                e.preventDefault()
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-                if (window.location.hash) {
-                  window.history.replaceState(null, '', window.location.pathname)
-                }
-              }}
+              onClick={(event) => scrollToLandingSection(event, 'overview')}
             >
               Overview
             </a>
-            <a href="#features" className="pw-nav-link">Features</a>
-            <a href="#how-it-works" className="pw-nav-link">How It Works</a>
-            <a href="#modules" className="pw-nav-link">Core Modules</a>
-            <a href="#faqs" className="pw-nav-link">FAQs</a>
+            <a href="#features" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'features')}>Features</a>
+            <a href="#how-it-works" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'how-it-works')}>How It Works</a>
+            <a href="#modules" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'modules')}>Core Modules</a>
+            <a href="#faqs" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'faqs')}>FAQs</a>
           </nav>
         )}
 

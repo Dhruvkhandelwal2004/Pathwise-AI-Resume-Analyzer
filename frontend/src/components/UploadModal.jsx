@@ -2,7 +2,14 @@ import React from 'react'
 import { X } from 'lucide-react'
 import { UploadDropzone } from './UploadSection.jsx'
 
-export function UploadModal({ isOpen, onClose, onAnalyze, loading }) {
+export function UploadModal({
+  isOpen,
+  onClose,
+  onAnalyze,
+  loading,
+  uploadError,
+  onUploadErrorChange,
+}) {
   if (!isOpen) return null
 
   return (
@@ -29,10 +36,13 @@ export function UploadModal({ isOpen, onClose, onAnalyze, loading }) {
         <div className="upload-modal-body">
           <UploadDropzone
             onAnalyze={(payload) => {
-              onAnalyze(payload)
+              const analysisRequest = onAnalyze({ ...payload, uploadSurface: 'modal' })
               onClose()
+              return analysisRequest
             }}
             loading={loading}
+            validationError={uploadError}
+            onValidationErrorChange={onUploadErrorChange}
           />
         </div>
       </div>

@@ -32,6 +32,10 @@ import { LoadingOverlay } from './components/LoadingOverlay.jsx'
 import { AtsScorePage } from './pages/AtsScorePage.jsx'
 import { CareerMatchingPage } from './pages/CareerMatchingPage.jsx'
 import { SkillsRoadmapPage } from './pages/SkillsRoadmapPage.jsx'
+import {
+  RESUME_FILE_SIZE_MESSAGE,
+  RESUME_FILE_VALIDATION_MESSAGE,
+} from './utils/resumeFileValidation.js'
 
 import './App.css'
 
@@ -39,11 +43,9 @@ const PYTHON_API = import.meta.env.VITE_PYTHON_API_URL ?? ''
 const NODE_API = import.meta.env.VITE_NODE_API_URL ?? ''
 
 const ERROR_MESSAGES = {
-  invalid_drive_url: 'Use a valid public Google Drive file link.',
-  drive_download_failed:
-    'We could not download that Drive file. Check that link sharing is enabled.',
-  drive_file_not_pdf: 'The linked Drive file is not a PDF.',
   file_not_pdf: 'Please choose a valid PDF file.',
+  invalid_resume_file: RESUME_FILE_VALIDATION_MESSAGE,
+  resume_file_too_large: RESUME_FILE_SIZE_MESSAGE,
   pdf_too_large: 'The PDF must be 5 MB or smaller.',
   protected_pdf: 'Password-protected PDFs are not supported.',
   unreadable_pdf: 'This PDF could not be read. Try exporting it again.',
@@ -295,6 +297,7 @@ export function App() {
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState(0)
   const [error, setError] = useState('')
+  const [uploadError, setUploadError] = useState('')
 
   const [, setQualityHistory] = useState(readQualityHistory)
   const [careerPlanState, setCareerPlanState] = useState(readCareerPlanState)
@@ -325,6 +328,7 @@ export function App() {
     setCareerPlanState(createEmptyCareerPlanState())
     setIsUploadModalOpen(false)
     setError('')
+    setUploadError('')
     setRoleError('')
     setStoreVersion((v) => v + 1)
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
@@ -408,21 +412,17 @@ export function App() {
     }
   }
 
-  const analyze = async ({ mode, file, driveUrl }) => {
+  const analyze = async ({ file, uploadSurface = 'inline' }) => {
     setLoading(true)
     setLoadingStep(0)
     setError('')
+    setUploadError('')
     setRoleError('')
 
     try {
-      let response
-      if (mode === 'upload') {
-        const form = new FormData()
-        form.append('resume', file)
-        response = await axios.post(`${PYTHON_API}/api/resumes/analyze-upload`, form)
-      } else {
-        response = await axios.post(`${PYTHON_API}/api/resumes/analyze-drive`, { url: driveUrl })
-      }
+      const form = new FormData()
+      form.append('resume', file)
+      const response = await axios.post(`${PYTHON_API}/api/resumes/analyze-upload`, form)
 
       const extractedAnalysis = response.data.analysis
       const extractedMetadata = response.data.metadata
@@ -464,8 +464,22 @@ export function App() {
       setIsUploadModalOpen(false)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       navigate(`/analysis/${resumeId}`)
+      return true
     } catch (requestError) {
+      const errorCode = requestError?.response?.data?.detail?.code
+      if (
+        ['invalid_resume_file', 'resume_file_too_large'].includes(errorCode)
+      ) {
+        setUploadError(
+          errorCode === 'resume_file_too_large'
+            ? RESUME_FILE_SIZE_MESSAGE
+            : RESUME_FILE_VALIDATION_MESSAGE,
+        )
+        if (uploadSurface === 'modal') setIsUploadModalOpen(true)
+        return false
+      }
       setError(getApiError(requestError))
+      return false
     } finally {
       setLoading(false)
     }
@@ -651,6 +665,8 @@ export function App() {
                   onAnalyze={analyze}
                   loading={loading}
                   onOpenUpload={() => setIsUploadModalOpen(true)}
+                  uploadError={uploadError}
+                  onUploadErrorChange={setUploadError}
                 />
               </main>
             }
@@ -720,6 +736,8 @@ export function App() {
         onClose={() => setIsUploadModalOpen(false)}
         onAnalyze={analyze}
         loading={loading}
+        uploadError={uploadError}
+        onUploadErrorChange={setUploadError}
       />
     </div>
   )

@@ -2,10 +2,16 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 
-from pipeline import MAX_PDF_BYTES, PipelineError, analyze_drive_resume, analyze_pdf_bytes
+from pipeline import (
+    MAX_RESUME_BYTES,
+    PipelineError,
+    analyze_document_bytes,
+    analyze_drive_resume,
+    validate_document_metadata,
+)
 
 
-app = FastAPI(title="AI Resume Analyzer - Python PDF Pipeline")
+app = FastAPI(title="AI Resume Analyzer - Document Pipeline")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -46,16 +52,23 @@ def analyze_drive(request: DriveResumeRequest) -> dict:
 
 @app.post("/api/resumes/analyze-upload")
 async def analyze_upload(resume: UploadFile = File(...)) -> dict:
-    if resume.content_type != "application/pdf":
+    try:
+        validate_document_metadata(resume.filename, resume.content_type)
+    except PipelineError as exc:
         raise HTTPException(
-            status_code=415,
-            detail={"success": False, "code": "file_not_pdf"},
-        )
+            status_code=exc.status_code,
+            detail={"success": False, "code": exc.code},
+        ) from None
 
-    pdf_bytes = await resume.read(MAX_PDF_BYTES + 1)
+    document_bytes = await resume.read(MAX_RESUME_BYTES + 1)
     await resume.close()
     try:
-        return analyze_pdf_bytes(pdf_bytes, "upload")
+        return analyze_document_bytes(
+            document_bytes,
+            "upload",
+            resume.filename,
+            resume.content_type,
+        )
     except PipelineError as exc:
         raise HTTPException(
             status_code=exc.status_code,
