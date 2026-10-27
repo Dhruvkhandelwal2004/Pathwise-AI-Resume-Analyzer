@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
+:root {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  color: #182433;
+  background: #f6f8fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ink: #182433;
+  --muted: #667382;
+  --soft: #f6f8fb;
+  --line: #e2e6ea;
+  --primary: #206bc4;
+  --primary-dark: #1a569d;
+  --green: #2fb344;
+  --violet: #ae3ec9;
+  --amber: #f59f00;
+  --red: #d63939;
+  --shadow: 0 1px 2px rgba(24, 36, 51, 0.04), 0 2px 8px rgba(24, 36, 51, 0.04);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--soft); font-size: 16px; }
+button, input, select, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+a { color: inherit; }
+h1, h2, h3, h4, p { margin-top: 0; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; color: var(--ink); }
+#root { min-height: 100vh; }

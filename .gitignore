@@ -1,0 +1,28 @@
+# Environment variables and local secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# JavaScript dependencies and build output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/coverage/
+
+# Python virtual environments and caches
+**/venv/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/*.py[cod]
+
+# Logs and local tooling
+**/*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local/private working documents
+/Drive/
+/Extra Assests/
