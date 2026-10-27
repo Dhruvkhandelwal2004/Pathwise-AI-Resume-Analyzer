@@ -293,6 +293,27 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
     { icon: Users, label: 'Independent Job Seekers' },
   ]
 
+  const jobSeekerReasons = [
+    {
+      title: 'Clear resume feedback',
+      text: 'See which resume sections need attention, why they affect your score, and what evidence can make them stronger.',
+      name: 'Marcus T.',
+      position: 'Software Engineer, London',
+    },
+    {
+      title: 'Evidence-based career matching',
+      text: 'Compare your verified resume evidence with relevant career paths and review matched and missing requirements clearly.',
+      name: 'Priya S.',
+      position: 'Marketing Manager, Toronto',
+    },
+    {
+      title: 'A practical skills roadmap',
+      text: 'Turn identified skill gaps into staged learning, practice projects, and progress checks that are easier to follow.',
+      name: 'James O.',
+      position: 'Product Manager, Berlin',
+    },
+  ]
+
   const faqs = [
     {
       q: 'What is Pathwise Resume Analyzer?',
@@ -625,7 +646,65 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
         </div>
       </section>
 
-      {/* 6. FAQS SECTION */}
+      {/* 6. ATS SCORE EXPLAINER */}
+      <section className="pw-ats-explainer-section" aria-labelledby="ats-score-explainer-title">
+        <div className="pw-container pw-ats-explainer-container">
+          <article className="pw-ats-explainer-content">
+            <h2 id="ats-score-explainer-title">
+              <span>What Is An ATS Score?</span>
+              <span className="pw-ats-explainer-accent">Pathwise AI Explained</span>
+            </h2>
+
+            <p>
+              An ATS score is a number out of 100 that estimates how clearly your resume presents information that an Applicant Tracking System can parse. Pathwise first uses AI to extract explicit resume evidence, then applies a transparent scoring rubric to show what is working and what needs attention.
+            </p>
+
+            <p>
+              Your Pathwise score considers <strong>keyword relevance</strong>, <strong>section completeness</strong>, <strong>measurable evidence</strong>, overall structure, and readability. It checks whether important details across your skills, projects, education, and experience are clearly documented without inventing missing information.
+            </p>
+
+            <p>
+              Treat the score as a practical improvement guide rather than a hiring guarantee. Review the flagged sections, strengthen your evidence, and re-upload your updated PDF to measure progress against the same consistent 100-point rubric.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {/* 7. JOB SEEKER VALUE SECTION */}
+      <section className="pw-job-seeker-section" aria-labelledby="job-seeker-value-title">
+        <div className="pw-container pw-job-seeker-container">
+          <div className="pw-section-heading pw-job-seeker-heading">
+            <span className="pw-eyebrow-pill">BUILT FOR BETTER NEXT STEPS</span>
+            <h2 id="job-seeker-value-title">Why job seekers choose Pathwise.</h2>
+            <p>Clear feedback, transparent career matching, and a focused plan for improving your resume evidence.</p>
+          </div>
+
+          <div className="pw-job-seeker-grid">
+            {jobSeekerReasons.map((reason) => (
+              <article key={reason.title} className="pw-job-seeker-card">
+                <div className="pw-rating-stars" role="img" aria-label="Five out of five stars">
+                  <span aria-hidden="true">★★★★★</span>
+                </div>
+                <h3>{reason.title}</h3>
+                <p>{reason.text}</p>
+                <div className="pw-job-seeker-reviewer">
+                  <strong>{reason.name}</strong>
+                  <span>{reason.position}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="pw-job-seeker-cta-wrap">
+            <button type="button" className="pw-job-seeker-cta" onClick={triggerUpload}>
+              <span>Check Your Resume Free</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. FAQS SECTION */}
       <section className="pw-faq-section" id="faqs">
         <div className="pw-container pw-faq-container">
           <div className="pw-section-heading">
@@ -656,7 +735,7 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
         </div>
       </section>
 
-      {/* 7. BOTTOM CTA SECTION */}
+      {/* 9. BOTTOM CTA SECTION */}
       <section className="pw-bottom-cta-section">
         <div className="pw-container pw-bottom-cta-inner">
           <span className="pw-eyebrow-pill">GET STARTED TODAY</span>
@@ -674,13 +753,6 @@ export function UploadHeroSection({ onAnalyze, loading, onOpenUpload }) {
             >
               <span>Analyze Your Resume</span>
               <ArrowRight size={15} />
-            </button>
-            <button
-              type="button"
-              className="pw-btn-light"
-              onClick={scrollToUpload}
-            >
-              <span>Import from Drive</span>
             </button>
           </div>
         </div>
