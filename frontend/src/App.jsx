@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Routes,
   Route,
@@ -29,6 +29,7 @@ import { Navbar } from './components/Navbar.jsx'
 import { UploadHeroSection } from './components/UploadSection.jsx'
 import { UploadModal } from './components/UploadModal.jsx'
 import { LoadingOverlay } from './components/LoadingOverlay.jsx'
+import { HelpAssistant } from './components/HelpAssistant.jsx'
 import { AtsScorePage } from './pages/AtsScorePage.jsx'
 import { CareerMatchingPage } from './pages/CareerMatchingPage.jsx'
 import { SkillsRoadmapPage } from './pages/SkillsRoadmapPage.jsx'
@@ -118,6 +119,10 @@ function getApiError(error) {
   }
   const code = error?.response?.data?.detail?.code
   return ERROR_MESSAGES[code] ?? 'Something went wrong. Please try again.'
+}
+
+function isCanceledRequest(error) {
+  return axios.isCancel(error) || error?.code === 'ERR_CANCELED'
 }
 
 function MissingResumeSessionView({ onOpenUpload, latestResumeId }) {
@@ -304,6 +309,7 @@ export function App() {
   const [storeVersion, setStoreVersion] = useState(0)
   const [roleLoading, setRoleLoading] = useState(false)
   const [roleError, setRoleError] = useState('')
+  const analysisAbortControllerRef = useRef(null)
 
   useEffect(() => {
     if (shouldRedirectReloadOnMount) {
@@ -319,6 +325,8 @@ export function App() {
   }, [location.pathname])
 
   const handleResetToHome = useCallback(() => {
+    analysisAbortControllerRef.current?.abort()
+    analysisAbortControllerRef.current = null
     clearSessionStore()
     try {
       window.sessionStorage.removeItem(CAREER_PLAN_STORAGE_KEY)
@@ -330,10 +338,16 @@ export function App() {
     setError('')
     setUploadError('')
     setRoleError('')
+    setLoading(false)
+    setLoadingStep(0)
     setStoreVersion((v) => v + 1)
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     navigate('/', { replace: true })
   }, [navigate])
+
+  useEffect(() => () => {
+    analysisAbortControllerRef.current?.abort()
+  }, [])
 
   useEffect(() => {
     if (!loading) return undefined
@@ -343,11 +357,11 @@ export function App() {
     return () => window.clearInterval(interval)
   }, [loading])
 
-  const requestCareerMatches = async (resumeAnalysis, roleId, studentEvidence) => {
+  const requestCareerMatches = async (resumeAnalysis, roleId, studentEvidence, signal) => {
     const requestBody = { analysis: resumeAnalysis }
     if (roleId) requestBody.targetRoleId = roleId
     if (studentEvidence) requestBody.studentEvidence = studentEvidence
-    const response = await axios.post(`${NODE_API}/api/careers/match`, requestBody)
+    const response = await axios.post(`${NODE_API}/api/careers/match`, requestBody, { signal })
     return response.data
   }
 
@@ -378,11 +392,11 @@ export function App() {
     },
   })
 
-  const fetchQualityScore = async (resumeAnalysis) => {
+  const fetchQualityScore = async (resumeAnalysis, signal) => {
     try {
       const response = await axios.post(`${NODE_API}/api/resumes/quality-score`, {
         analysis: resumeAnalysis,
-      })
+      }, { signal })
       const result = response.data
       setQualityHistory((current) => {
         const snapshot = {
@@ -407,12 +421,17 @@ export function App() {
         return updated
       })
       return result
-    } catch {
+    } catch (requestError) {
+      if (isCanceledRequest(requestError)) throw requestError
       return null
     }
   }
 
   const analyze = async ({ file, uploadSurface = 'inline' }) => {
+    analysisAbortControllerRef.current?.abort()
+    const abortController = new AbortController()
+    analysisAbortControllerRef.current = abortController
+
     setLoading(true)
     setLoadingStep(0)
     setError('')
@@ -422,7 +441,13 @@ export function App() {
     try {
       const form = new FormData()
       form.append('resume', file)
-      const response = await axios.post(`${PYTHON_API}/api/resumes/analyze-upload`, form)
+      const response = await axios.post(`${PYTHON_API}/api/resumes/analyze-upload`, form, {
+        signal: abortController.signal,
+      })
+
+      if (abortController.signal.aborted) {
+        throw new axios.CanceledError('Resume analysis canceled')
+      }
 
       const extractedAnalysis = response.data.analysis
       const extractedMetadata = response.data.metadata
@@ -430,12 +455,30 @@ export function App() {
       const activeRoleId = careerPlanState.activePlan?.targetRoleId
 
       const [careerResult, qualityResult] = await Promise.all([
-        requestCareerMatches(extractedAnalysis, activeRoleId).catch(async () => {
+        requestCareerMatches(
+          extractedAnalysis,
+          activeRoleId,
+          undefined,
+          abortController.signal,
+        ).catch(async (requestError) => {
+          if (isCanceledRequest(requestError)) throw requestError
           if (!activeRoleId) return null
-          return requestCareerMatches(extractedAnalysis).catch(() => null)
+          return requestCareerMatches(
+            extractedAnalysis,
+            undefined,
+            undefined,
+            abortController.signal,
+          ).catch((fallbackError) => {
+            if (isCanceledRequest(fallbackError)) throw fallbackError
+            return null
+          })
         }),
-        fetchQualityScore(extractedAnalysis),
+        fetchQualityScore(extractedAnalysis, abortController.signal),
       ])
+
+      if (abortController.signal.aborted) {
+        throw new axios.CanceledError('Resume analysis canceled')
+      }
 
       const initialRoleId =
         careerResult?.selectedProfile?.roleId ??
@@ -466,6 +509,9 @@ export function App() {
       navigate(`/analysis/${resumeId}`)
       return true
     } catch (requestError) {
+      if (isCanceledRequest(requestError) || abortController.signal.aborted) {
+        return false
+      }
       const errorCode = requestError?.response?.data?.detail?.code
       if (
         ['invalid_resume_file', 'resume_file_too_large'].includes(errorCode)
@@ -481,9 +527,21 @@ export function App() {
       setError(getApiError(requestError))
       return false
     } finally {
-      setLoading(false)
+      if (analysisAbortControllerRef.current === abortController) {
+        analysisAbortControllerRef.current = null
+        setLoading(false)
+      }
     }
   }
+
+  const handleCancelAnalysis = useCallback(() => {
+    analysisAbortControllerRef.current?.abort()
+    setLoading(false)
+    setLoadingStep(0)
+    setError('')
+    setRoleError('')
+    setIsUploadModalOpen(false)
+  }, [])
 
   const handleSelectAndLoadRole = useCallback(async (resumeId, roleId) => {
     const record = getResumeSessionRecord(resumeId)
@@ -634,6 +692,7 @@ export function App() {
         }
         onNewUpload={() => setIsUploadModalOpen(true)}
         onResetHome={handleResetToHome}
+        onCancelAnalysis={handleCancelAnalysis}
       />
 
       {error && (
@@ -730,6 +789,8 @@ export function App() {
           </div>
         </div>
       </footer>
+
+      <HelpAssistant />
 
       <UploadModal
         isOpen={isUploadModalOpen}

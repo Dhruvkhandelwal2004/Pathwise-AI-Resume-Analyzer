@@ -7,6 +7,7 @@ import {
   Target,
   Gauge,
   Map,
+  XCircle,
 } from 'lucide-react'
 import {
   smoothScrollToElement,
@@ -21,6 +22,7 @@ export function Navbar({
   activeRoleId = 'data-analyst',
   onNewUpload,
   onResetHome,
+  onCancelAnalysis,
 }) {
   const scrollToLandingSection = (event, sectionId) => {
     event.preventDefault()
@@ -105,7 +107,18 @@ export function Navbar({
           </nav>
         )}
 
-        {!isLoading && (
+        {isLoading ? (
+          <div className="navbar-actions navbar-loading-actions">
+            <button
+              type="button"
+              className="navbar-cancel-analysis-button"
+              onClick={onCancelAnalysis}
+            >
+              <XCircle size={16} />
+              <span>Cancel Analysis</span>
+            </button>
+          </div>
+        ) : (
           <div className="navbar-actions">
             {isAnalyzed ? (
               <>

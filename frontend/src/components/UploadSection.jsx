@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   UploadCloud,
   FileText,
@@ -18,7 +18,6 @@ import {
   Users,
   Check,
   AlertCircle,
-  ArrowUp,
 } from 'lucide-react'
 import {
   RESUME_FILE_VALIDATION_MESSAGE,
@@ -26,7 +25,6 @@ import {
 } from '../utils/resumeFileValidation.js'
 import {
   smoothScrollToElement,
-  smoothScrollToTop,
 } from '../utils/smoothScroll.js'
 
 export function UploadDropzone({
@@ -201,17 +199,6 @@ export function UploadHeroSection({
 }) {
   const uploadBoxRef = useRef(null)
   const [openFaqIndex, setOpenFaqIndex] = useState(null)
-  const [showBackToTop, setShowBackToTop] = useState(false)
-
-  useEffect(() => {
-    const updateBackToTopVisibility = () => {
-      setShowBackToTop(window.scrollY > 600)
-    }
-
-    updateBackToTopVisibility()
-    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true })
-    return () => window.removeEventListener('scroll', updateBackToTopVisibility)
-  }, [])
 
   const scrollToUpload = () => {
     if (uploadBoxRef.current) {
@@ -487,7 +474,7 @@ export function UploadHeroSection({
                 </div>
                 <div className="pw-window-user">
                   <span className="pw-user-avatar">P</span>
-                  <span>Candidate</span>
+                  <span>Puneet</span>
                 </div>
               </div>
 
@@ -516,7 +503,6 @@ export function UploadHeroSection({
                       <h3>Dashboard</h3>
                       <p>Here is what is happening today.</p>
                     </div>
-                    <span className="pw-mockup-date">Rubric v1.0</span>
                   </div>
 
                   {/* 4 Metric Cards */}
@@ -836,22 +822,6 @@ export function UploadHeroSection({
         </div>
       </section>
 
-      <button
-        type="button"
-        className={`pw-back-to-top ${showBackToTop ? 'is-visible' : ''}`}
-        aria-label="Back to top"
-        title="Back to top"
-        onClick={() => {
-          smoothScrollToTop()
-          window.history.replaceState(
-            null,
-            '',
-            `${window.location.pathname}${window.location.search}`,
-          )
-        }}
-      >
-        <ArrowUp size={20} strokeWidth={2.4} />
-      </button>
     </div>
   )
 }
