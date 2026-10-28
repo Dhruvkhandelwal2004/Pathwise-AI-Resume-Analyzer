@@ -2733,9 +2733,18 @@
 }
 
 .ag-missing-session-wrap {
-  max-width: 620px;
-  margin: 64px auto;
+  position: fixed;
+  top: 50vh;
+  top: 50dvh;
+  left: 50vw;
+  z-index: 20;
+  width: min(620px, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  margin: 0;
   padding: 0 20px;
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
 }
 
 .ag-missing-session-card {
