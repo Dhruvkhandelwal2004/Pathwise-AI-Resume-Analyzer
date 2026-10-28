@@ -392,7 +392,7 @@ export const CHAT_QUESTIONS = [
     id: 'resume-analysis',
     question: 'How does resume analysis work?',
     answer:
-      'Pathwise validates the document, extracts readable text, and uses the configured Groq provider to structure explicit resume evidence. The structured result is validated before deterministic scoring and career matching are calculated.',
+      'Pathwise validates the document, extracts readable text, and uses the configured AI provider to structure explicit resume evidence. The structured result is validated before deterministic scoring and career matching are calculated.',
     followUps: ['improve-score', 'resume-data-safe'],
   },
 ]

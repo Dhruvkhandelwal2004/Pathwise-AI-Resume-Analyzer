@@ -19,7 +19,7 @@ export function LoadingOverlay({ step = 0 }) {
 
       <h2>{LOADING_STEPS[currentStep]}</h2>
       <p className="loading-subtext">
-        Analyzing explicit resume evidence with Groq and deterministic rubrics. Please hold on.
+        Analyzing explicit resume evidence with AI and deterministic rubrics. Please hold on.
       </p>
 
       <div className="loading-progress-track">
