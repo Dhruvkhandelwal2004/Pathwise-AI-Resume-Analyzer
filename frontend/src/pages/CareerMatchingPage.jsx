@@ -31,6 +31,14 @@ function readAutoMatchPreference() {
   return true
 }
 
+function saveAutoMatchPreference(isEnabled) {
+  try {
+    window.localStorage.setItem(AUTO_MATCH_STORAGE_KEY, String(isEnabled))
+  } catch {
+    // The toggle still works for the current render when storage is unavailable.
+  }
+}
+
 function MiniScoreRing({ score, isActive }) {
   const radius = 19
   const circumference = 2 * Math.PI * radius
@@ -124,14 +132,6 @@ export function CareerMatchingPage({
   const [catalogueLoading, setCatalogueLoading] = useState(false)
   const [showUnmatchedTab, setShowUnmatchedTab] = useState(false)
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(AUTO_MATCH_STORAGE_KEY, String(autoMatch))
-    } catch {
-      // The toggle still works for the current render when storage is unavailable.
-    }
-  }, [autoMatch])
-
   // Fetch approved catalogue profiles when search query changes
   useEffect(() => {
     const controller = new AbortController()
@@ -180,6 +180,12 @@ export function CareerMatchingPage({
     return Array.from(set)
   }, [catalogueRoles])
 
+  const currentRoleId =
+    selectedRoleId ||
+    career?.selectedProfile?.roleId ||
+    career?.strongestMatches?.[0]?.roleId ||
+    'data-analyst'
+
   const displayedRoles = useMemo(() => {
     const baseList =
       catalogueRoles.length > 0
@@ -214,15 +220,46 @@ export function CareerMatchingPage({
 
     if (autoMatch) {
       enriched.sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
+    } else {
+      const selectedIndex = enriched.findIndex((role) => role.roleId === currentRoleId)
+      if (selectedIndex > 0) {
+        const [selectedRole] = enriched.splice(selectedIndex, 1)
+        enriched.unshift(selectedRole)
+      }
     }
     return enriched
-  }, [catalogueRoles, career, benchmarkByRoleId, selectedCategory, autoMatch])
+  }, [
+    catalogueRoles,
+    career,
+    benchmarkByRoleId,
+    selectedCategory,
+    autoMatch,
+    currentRoleId,
+  ])
 
-  const currentRoleId =
-    selectedRoleId ||
-    career?.selectedProfile?.roleId ||
-    career?.strongestMatches?.[0]?.roleId ||
-    'data-analyst'
+  const bestMatchingRoleId = useMemo(() => {
+    const bestRole = displayedRoles.reduce((currentBest, role) => {
+      if (!currentBest) return role
+      return (role.score ?? -1) > (currentBest.score ?? -1)
+        ? role
+        : currentBest
+    }, null)
+    return bestRole?.roleId ?? null
+  }, [displayedRoles])
+
+  const handleAutoMatchToggle = () => {
+    const nextAutoMatch = !autoMatch
+    saveAutoMatchPreference(nextAutoMatch)
+    setAutoMatch(nextAutoMatch)
+
+    if (
+      nextAutoMatch &&
+      bestMatchingRoleId &&
+      bestMatchingRoleId !== currentRoleId
+    ) {
+      onSelectRole(bestMatchingRoleId)
+    }
+  }
 
   const activeCareerData = careerByRoleId[currentRoleId] ?? career
   const selectedProfile = activeCareerData?.selectedProfile ?? {
@@ -412,7 +449,7 @@ export function CareerMatchingPage({
               role="switch"
               aria-checked={autoMatch}
               className={`ag-toggle-switch ${autoMatch ? 'is-on' : ''}`}
-              onClick={() => setAutoMatch((prev) => !prev)}
+              onClick={handleAutoMatchToggle}
             >
               <span className="ag-toggle-knob" />
             </button>
@@ -435,7 +472,7 @@ export function CareerMatchingPage({
                 {searchQuery.trim() ? `"${searchQuery.trim()}"` : `"${selectedCategory === 'All' ? 'All Approved Roles' : selectedCategory}"`}
               </span>
               <span className="ag-list-sort-label">
-                ⇅ {autoMatch ? 'Best match' : 'Catalogue order'} ⌄
+                ⇅ {autoMatch ? 'Best match' : 'Selected role first'} ⌄
               </span>
             </div>
 
