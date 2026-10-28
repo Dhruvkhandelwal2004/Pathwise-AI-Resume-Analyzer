@@ -5228,6 +5228,73 @@
 }
 
 @media (max-width: 768px) {
+  .enhancv-app-shell.is-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .enhancv-app-shell.is-loading .enhancv-main-layout {
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+  }
+  .enhancv-app-shell.is-loading .enhancv-loading-container {
+    width: 100%;
+    margin: 0 auto;
+  }
+  .enhancv-app-shell.is-loading .enhancv-loading-card {
+    padding: 1.35rem 1.1rem;
+  }
+  .enhancv-app-shell.is-loading .loading-icon-glow {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 0.7rem;
+  }
+  .enhancv-app-shell.is-loading .loading-icon-glow svg {
+    width: 29px;
+    height: 29px;
+  }
+  .enhancv-app-shell.is-loading .enhancv-loading-card h2 {
+    margin-bottom: 0.55rem;
+    font-size: clamp(1.15rem, 5vw, 1.4rem);
+    line-height: 1.3;
+  }
+  .enhancv-app-shell.is-loading .loading-subtext {
+    margin-bottom: 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  .enhancv-app-shell.is-loading .loading-progress-track {
+    margin: 0.85rem 0;
+  }
+  .enhancv-app-shell.is-loading .loading-steps-pills {
+    gap: 0.4rem;
+  }
+  .enhancv-app-shell.is-loading .loading-step-item {
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+  .enhancv-app-shell.is-loading .pw-footer {
+    flex: 0 0 auto;
+    padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom));
+  }
+  .enhancv-app-shell.is-loading .pw-footer-inner {
+    gap: 0.4rem;
+  }
+  .enhancv-app-shell.is-loading .pw-footer-links span {
+    font-size: 0.68rem;
+  }
+  .enhancv-app-shell.is-loading .pw-chat-assistant {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
   .navbar-container {
     padding: 0.5rem 1.15rem;
     min-height: 58px;
@@ -5266,7 +5333,7 @@
     justify-content: flex-start;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-bottom: 0;
+    padding-block: 0.25rem;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     -ms-overflow-style: none;

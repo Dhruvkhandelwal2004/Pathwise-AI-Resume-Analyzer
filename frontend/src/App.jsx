@@ -357,6 +357,30 @@ export function App() {
     return () => window.clearInterval(interval)
   }, [loading])
 
+  useEffect(() => {
+    if (!loading) return undefined
+
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflow = html.style.overflow
+    const previousHtmlOverscroll = html.style.overscrollBehavior
+    const previousBodyOverflow = body.style.overflow
+    const previousBodyOverscroll = body.style.overscrollBehavior
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    html.style.overflow = 'hidden'
+    html.style.overscrollBehavior = 'none'
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow
+      html.style.overscrollBehavior = previousHtmlOverscroll
+      body.style.overflow = previousBodyOverflow
+      body.style.overscrollBehavior = previousBodyOverscroll
+    }
+  }, [loading])
+
   const requestCareerMatches = async (resumeAnalysis, roleId, studentEvidence, signal) => {
     const requestBody = { analysis: resumeAnalysis }
     if (roleId) requestBody.targetRoleId = roleId
@@ -679,7 +703,7 @@ export function App() {
     : null
 
   return (
-    <div className="enhancv-app-shell" id="top">
+    <div className={`enhancv-app-shell${loading ? ' is-loading' : ''}`} id="top">
       <Navbar
         activeTargetRole={careerPlanState.activePlan?.targetRoleTitle}
         isAnalyzed={Boolean(latestRecord) && location.pathname !== '/'}
