@@ -805,7 +805,7 @@ export function App() {
         </div>
       </footer>
 
-      <HelpAssistant />
+      {!loading && <HelpAssistant />}
 
       <UploadModal
         isOpen={isUploadModalOpen}

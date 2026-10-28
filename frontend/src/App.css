@@ -5300,9 +5300,6 @@
   .enhancv-app-shell.is-loading .pw-footer-links span {
     font-size: 0.68rem;
   }
-  .enhancv-app-shell.is-loading .pw-chat-assistant {
-    bottom: calc(5.5rem + env(safe-area-inset-bottom));
-  }
   .navbar-container {
     padding: 0.5rem 1.15rem;
     min-height: 58px;
