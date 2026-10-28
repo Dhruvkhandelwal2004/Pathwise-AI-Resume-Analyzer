@@ -15,6 +15,21 @@ import {
 } from 'lucide-react'
 
 const NODE_API = import.meta.env.VITE_NODE_API_URL ?? ''
+const AUTO_MATCH_STORAGE_KEY = 'pathwise-auto-match-enabled-v1'
+
+function readAutoMatchPreference() {
+  if (typeof window === 'undefined') return true
+
+  try {
+    const savedPreference = window.localStorage.getItem(AUTO_MATCH_STORAGE_KEY)
+    if (savedPreference === 'false') return false
+    if (savedPreference === 'true') return true
+  } catch {
+    // Use the default when browser storage is unavailable.
+  }
+
+  return true
+}
 
 function MiniScoreRing({ score, isActive }) {
   const radius = 19
@@ -104,10 +119,18 @@ export function CareerMatchingPage({
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [autoMatch, setAutoMatch] = useState(true)
+  const [autoMatch, setAutoMatch] = useState(readAutoMatchPreference)
   const [catalogueRoles, setCatalogueRoles] = useState([])
   const [catalogueLoading, setCatalogueLoading] = useState(false)
   const [showUnmatchedTab, setShowUnmatchedTab] = useState(false)
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AUTO_MATCH_STORAGE_KEY, String(autoMatch))
+    } catch {
+      // The toggle still works for the current render when storage is unavailable.
+    }
+  }, [autoMatch])
 
   // Fetch approved catalogue profiles when search query changes
   useEffect(() => {
