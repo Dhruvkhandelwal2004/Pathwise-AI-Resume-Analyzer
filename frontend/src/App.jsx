@@ -324,26 +324,17 @@ export function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [location.pathname])
 
-  const handleResetToHome = useCallback(() => {
+  const handleNavigateHome = useCallback(() => {
     analysisAbortControllerRef.current?.abort()
     analysisAbortControllerRef.current = null
-    clearSessionStore()
-    try {
-      window.sessionStorage.removeItem(CAREER_PLAN_STORAGE_KEY)
-    } catch {
-      // Ignore storage errors
-    }
-    setCareerPlanState(createEmptyCareerPlanState())
     setIsUploadModalOpen(false)
     setError('')
     setUploadError('')
     setRoleError('')
     setLoading(false)
     setLoadingStep(0)
-    setStoreVersion((v) => v + 1)
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    navigate('/', { replace: true })
-  }, [navigate])
+  }, [])
 
   useEffect(() => () => {
     analysisAbortControllerRef.current?.abort()
@@ -715,7 +706,7 @@ export function App() {
           'data-analyst'
         }
         onNewUpload={() => setIsUploadModalOpen(true)}
-        onResetHome={handleResetToHome}
+        onNavigateHome={handleNavigateHome}
         onCancelAnalysis={handleCancelAnalysis}
       />
 
@@ -798,7 +789,7 @@ export function App() {
 
       <footer className="pw-footer">
         <div className="pw-container pw-footer-inner">
-          <Link to="/" onClick={handleResetToHome} className="pw-footer-brand">
+          <Link to="/" onClick={handleNavigateHome} className="pw-footer-brand">
             <span className="brand-icon-wrapper">
               <BookOpen size={15} strokeWidth={2.2} />
             </span>

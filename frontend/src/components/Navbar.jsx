@@ -21,7 +21,7 @@ export function Navbar({
   latestResumeId,
   activeRoleId = 'data-analyst',
   onNewUpload,
-  onResetHome,
+  onNavigateHome,
   onCancelAnalysis,
 }) {
   const scrollToLandingSection = (event, sectionId) => {
@@ -45,7 +45,7 @@ export function Navbar({
         <div className="navbar-brand-group">
           <Link
             to="/"
-            onClick={onResetHome}
+            onClick={onNavigateHome}
             className="navbar-brand"
             aria-label="Pathwise Home"
           >
