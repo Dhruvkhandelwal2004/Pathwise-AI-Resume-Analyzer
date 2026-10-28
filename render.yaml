@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: pathwise-python-api-dhruv
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: python-backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.17
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: AI_TIMEOUT_MS
+        value: "30000"
+
+  - type: web
+    name: pathwise-node-api-dhruv
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
