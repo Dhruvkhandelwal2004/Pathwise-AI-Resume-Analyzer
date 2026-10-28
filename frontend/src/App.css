@@ -2379,7 +2379,7 @@
 @media (max-width: 640px) {
   .pw-chat-assistant {
     right: 0.65rem;
-    bottom: 0.65rem;
+    bottom: 1.5rem;
   }
 
   .pw-chat-trigger {
@@ -5231,6 +5231,61 @@
   .navbar-container {
     padding: 0.5rem 1.15rem;
     min-height: 58px;
+  }
+  .navbar-container.is-analyzed {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.45rem 0.75rem;
+  }
+  .navbar-container.is-analyzed .navbar-brand-group {
+    display: contents;
+  }
+  .navbar-container.is-analyzed .navbar-brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .navbar-container.is-analyzed .navbar-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    margin-left: 0;
+  }
+  .navbar-container.is-analyzed .navbar-cta-button {
+    padding: 0.46rem 0.72rem;
+    font-size: 0.78rem;
+  }
+  .navbar-container.is-analyzed .ag-step-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .navbar-container.is-analyzed .ag-step-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .navbar-container.is-analyzed .ag-step-link,
+  .navbar-container.is-analyzed .ag-step-sep {
+    flex: 0 0 auto;
+  }
+  .navbar-container.is-analyzed .ag-step-link {
+    scroll-snap-align: start;
+  }
+  .navbar-container.is-analyzed .navbar-role-pill {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    max-width: 100%;
   }
   .pw-landing-nav-links {
     display: none;
