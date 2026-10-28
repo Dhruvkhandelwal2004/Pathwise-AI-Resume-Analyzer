@@ -13,7 +13,7 @@ const { validateResumeContent } = require("./services/resumeValidation");
 require("dotenv").config({ quiet: true });
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const PDF_SIGNATURE = Buffer.from("%PDF-");
 const OLE_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);

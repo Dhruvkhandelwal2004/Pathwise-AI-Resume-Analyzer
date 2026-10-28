@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Net.Http
 
-$BaseUrl = "http://localhost:5000"
+$BaseUrl = "http://localhost:5001"
 $ResumePath = Join-Path $PSScriptRoot "..\..\Extra Assests\Resume.pdf"
 $TargetRoleId = "data-analyst"
 $MaxFileSizeBytes = 5MB
@@ -120,7 +120,7 @@ function Invoke-SafeGet {
     }
     catch {
       throw [System.InvalidOperationException]::new(
-        "$Step could not reach the local backend. Confirm that it is running on port 5000."
+        "$Step could not reach the local backend. Confirm that it is running on port 5001."
       )
     }
 
