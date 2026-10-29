@@ -9,13 +9,31 @@ export const CHAT_CATEGORIES = [
     id: 'getting-started',
     label: 'Getting started',
     prompt: 'Here are a few helpful places to begin.',
-    questionIds: ['what-can-pathwise-do', 'where-should-i-start', 'how-does-it-work'],
+    questionIds: [
+      'how-use-pathwise',
+      'can-use-as-fresher',
+      'after-uploading',
+      'explore-multiple-careers',
+      'get-started-no-experience',
+      'pathwise-career-guidance',
+      'what-can-pathwise-do',
+      'where-should-i-start',
+      'how-does-it-work',
+    ],
   },
   {
     id: 'resume-career',
     label: 'Resume & Career',
     prompt: 'Choose a resume or career question below.',
     questionIds: [
+      'write-first-resume',
+      'skills-to-highlight',
+      'describe-academic-projects',
+      'add-college-assignments',
+      'explain-career-gap',
+      'tailor-resume-for-role',
+      'resume-without-certifications',
+      'switch-career-paths',
       'resume-weak',
       'improve-resume',
       'no-experience',
@@ -37,6 +55,14 @@ export const CHAT_CATEGORIES = [
     label: 'Learning & Growth',
     prompt: 'Let’s explore learning, projects, interviews, and progress.',
     questionIds: [
+      'make-study-plan',
+      'skills-in-demand',
+      'learn-skill-from-scratch',
+      'revise-learning',
+      'balance-college-learning',
+      'measure-learning-progress',
+      'theory-or-practice-first',
+      'avoid-tutorial-overload',
       'dont-know-start',
       'learn-first',
       'too-many-skills',
@@ -54,6 +80,18 @@ export const CHAT_CATEGORIES = [
     label: 'Projects & Practical Skills',
     prompt: 'Choose a project or practical-skills question below.',
     questionIds: [
+      'start-first-project',
+      'choose-project-difficulty',
+      'build-project-without-team',
+      'debug-project-errors',
+      'write-project-documentation',
+      'upload-project-github',
+      'deploy-project-online',
+      'improve-existing-project',
+      'make-project-unique',
+      'project-readme-contents',
+      'explain-project-in-interviews',
+      'turn-idea-into-product',
       'project-to-build',
       'theory-cant-build',
       'first-portfolio',
@@ -66,6 +104,16 @@ export const CHAT_CATEGORIES = [
     label: 'Jobs & Interviews',
     prompt: 'Choose a job-readiness or interview question below.',
     questionIds: [
+      'find-fresher-jobs',
+      'prepare-aptitude-tests',
+      'answer-hr-questions',
+      'explain-college-projects',
+      'portfolio-contents',
+      'prepare-technical-round',
+      'apply-without-internship',
+      'improve-communication',
+      'handle-interview-rejection',
+      'prepare-campus-placements',
       'job-ready',
       'prepare-interviews',
       'keep-getting-rejected',
@@ -77,11 +125,23 @@ export const CHAT_CATEGORIES = [
     id: 'other-questions',
     label: 'Other questions',
     prompt: 'Here are a few other common Pathwise questions.',
-    questionIds: ['pathwise-free', 'resume-data-safe', 'something-not-working'],
+    questionIds: [
+      'use-without-account',
+      'pathwise-free-to-use',
+      'uploaded-resume-handling',
+      'file-not-uploading',
+      'analysis-failed',
+      'score-looks-incorrect',
+      'download-roadmap',
+      'report-technical-issue',
+      'pathwise-free',
+      'resume-data-safe',
+      'something-not-working',
+    ],
   },
 ]
 
-export const CHAT_QUESTIONS = [
+const CORE_CHAT_QUESTIONS = [
   {
     id: 'what-can-pathwise-do',
     question: 'What can Pathwise do?',
@@ -395,6 +455,394 @@ export const CHAT_QUESTIONS = [
       'Pathwise validates the document, extracts readable text, and uses the configured AI provider to structure explicit resume evidence. The structured result is validated before deterministic scoring and career matching are calculated.',
     followUps: ['improve-score', 'resume-data-safe'],
   },
+]
+
+// Questions supplied in the expanded Pathwise help catalogue. These remain
+// separate from the original set so the existing guided flows stay intact.
+const EXPANDED_CHAT_QUESTIONS = [
+  {
+    id: 'how-use-pathwise',
+    question: 'How do I use Pathwise?',
+    answer:
+      'Pathwise helps you review your resume, explore career options, identify skill gaps, and plan your learning. Start by uploading your resume, then review your analysis and explore your career matches.',
+    followUps: ['after-uploading'],
+  },
+  {
+    id: 'can-use-as-fresher',
+    question: 'Can I use it as a fresher?',
+    answer:
+      'Absolutely! Pathwise is useful for students and freshers too. You can highlight your education, academic projects, skills, and certifications even if you have no work experience.',
+    followUps: ['get-started-no-experience'],
+  },
+  {
+    id: 'after-uploading',
+    question: 'What should I do after uploading?',
+    answer:
+      'Review the information extracted from your resume, check the feedback, and explore career roles that interest you. Then identify the skills you need to develop for your chosen direction.',
+    followUps: ['choose-target-role'],
+  },
+  {
+    id: 'explore-multiple-careers',
+    question: 'Can I explore multiple careers?',
+    answer:
+      "Yes, you can compare available career options and explore their requirements. Choose a primary target when you're ready to build a focused learning plan.",
+    followUps: ['switch-career-paths'],
+  },
+  {
+    id: 'get-started-no-experience',
+    question: 'How do I get started with no experience?',
+    answer:
+      'Start with your current knowledge. Choose one career direction, learn its fundamentals, complete a small practical project, and gradually build a portfolio that demonstrates your abilities.',
+    followUps: ['project-to-build'],
+  },
+  {
+    id: 'pathwise-career-guidance',
+    question: 'How can Pathwise guide my career?',
+    answer:
+      'Pathwise can help you understand your resume, explore career matches, and identify learning priorities. Use its recommendations alongside your interests, practical experience, and career goals.',
+    followUps: [],
+  },
+  {
+    id: 'write-first-resume',
+    question: 'How do I write my first resume?',
+    answer:
+      'Start with your contact details, career objective or summary, education, technical skills, projects, and relevant certifications. Keep the layout clear and include only accurate information.',
+    followUps: ['skills-to-highlight'],
+  },
+  {
+    id: 'skills-to-highlight',
+    question: 'Which skills should I highlight?',
+    answer:
+      'Highlight skills that are relevant to your target role and that you can genuinely demonstrate. Support important skills with examples from your projects, coursework, internships, or practical experience.',
+    followUps: ['tailor-resume-for-role'],
+  },
+  {
+    id: 'describe-academic-projects',
+    question: 'How do I describe academic projects?',
+    answer:
+      'Explain the problem, your solution, the technologies used, and your personal contribution. Include measurable results only when you have real evidence to support them.',
+    followUps: ['add-college-assignments'],
+  },
+  {
+    id: 'add-college-assignments',
+    question: 'Should I add college assignments?',
+    answer:
+      'Yes, if an assignment demonstrates relevant skills or meaningful work. Prioritise substantial assignments that solve a problem, involve practical implementation, or show your understanding of the subject.',
+    followUps: ['showcase-projects'],
+  },
+  {
+    id: 'explain-career-gap',
+    question: 'How do I explain a career gap?',
+    answer:
+      'Be honest and concise. Explain what you were doing during that period and mention relevant learning, projects, or responsibilities if applicable. Never invent experience to fill a gap.',
+    followUps: ['write-first-resume'],
+  },
+  {
+    id: 'tailor-resume-for-role',
+    question: 'How do I tailor my resume for a role?',
+    answer:
+      'Review the job description and identify its important requirements. Highlight your relevant skills and projects, use accurate role-related terminology, and remove unrelated details where appropriate.',
+    followUps: ['skills-to-highlight'],
+  },
+  {
+    id: 'resume-without-certifications',
+    question: 'What if my resume has no certifications?',
+    answer:
+      "That's okay. Certifications are not the only way to demonstrate skills. Focus on relevant projects, practical abilities, education, and evidence of what you can build or accomplish.",
+    followUps: ['showcase-projects'],
+  },
+  {
+    id: 'switch-career-paths',
+    question: 'How do I switch career paths?',
+    answer:
+      'Identify transferable skills, learn the fundamentals of your new field, and build projects that demonstrate your ability. Update your resume to emphasise relevant evidence rather than unrelated experience.',
+    followUps: ['career-right'],
+  },
+  {
+    id: 'make-study-plan',
+    question: 'How do I make a study plan?',
+    answer:
+      'Set a clear career goal, divide the required skills into smaller topics, and schedule regular learning and practice sessions. Include weekly milestones so you can review your progress.',
+    followUps: ['study-daily'],
+  },
+  {
+    id: 'skills-in-demand',
+    question: 'Which skills are in demand for my role?',
+    answer:
+      'Start by reviewing current job descriptions for your target role. Identify the skills that appear repeatedly, distinguish essential requirements from optional ones, and prioritise the most relevant skills.',
+    followUps: ['learn-first'],
+  },
+  {
+    id: 'learn-skill-from-scratch',
+    question: 'How do I learn a skill from scratch?',
+    answer:
+      'Begin with the fundamentals, follow one structured learning resource, and practise each concept with small exercises. Once you understand the basics, apply them in a practical project.',
+    followUps: ['learn-without-stuck'],
+  },
+  {
+    id: 'revise-learning',
+    question: "How do I revise what I've learned?",
+    answer:
+      'Revisit your notes, explain concepts in your own words, solve practice questions, and build small examples without following a tutorial. Review difficult topics more frequently.',
+    followUps: ['practise-skills'],
+  },
+  {
+    id: 'balance-college-learning',
+    question: 'How do I balance college and learning?',
+    answer:
+      'Set realistic weekly goals around your classes, assignments, and exams. Even 30–60 minutes of focused practice on suitable days can help you maintain momentum.',
+    followUps: ['stay-consistent'],
+  },
+  {
+    id: 'measure-learning-progress',
+    question: 'How do I measure my learning progress?',
+    answer:
+      'Track completed topics, solved exercises, projects built, and concepts you can explain independently. Focus on what you can actually do rather than only counting study hours.',
+    followUps: ['prove-skills'],
+  },
+  {
+    id: 'theory-or-practice-first',
+    question: 'Should I learn theory or practise first?',
+    answer:
+      'Combine both. Learn enough theory to understand a concept, practise it immediately, and apply it in a small task. This helps connect knowledge with real-world use.',
+    followUps: ['theory-cant-build'],
+  },
+  {
+    id: 'avoid-tutorial-overload',
+    question: 'How do I avoid tutorial overload?',
+    answer:
+      "Choose one primary course or learning resource and follow it until you can apply the concepts. Avoid switching between multiple tutorials before practising what you've already learned.",
+    followUps: ['make-study-plan'],
+  },
+  {
+    id: 'start-first-project',
+    question: 'How do I start my first project?',
+    answer:
+      'Choose a small problem you understand, define what the project should do, and list its essential features. Build a basic working version first, test it, and add improvements gradually.',
+    followUps: ['choose-project-difficulty'],
+  },
+  {
+    id: 'choose-project-difficulty',
+    question: 'How do I choose a project difficulty?',
+    answer:
+      'Pick a project that uses skills you already understand while introducing one or two new concepts. If you cannot explain the basic approach, simplify the project before adding more features.',
+    followUps: ['project-to-build'],
+  },
+  {
+    id: 'build-project-without-team',
+    question: 'Can I build projects without a team?',
+    answer:
+      'Yes! Start with a manageable individual project, divide it into small tasks, and build one feature at a time. Use Git to track your changes and document your progress.',
+    followUps: ['start-first-project'],
+  },
+  {
+    id: 'debug-project-errors',
+    question: 'How do I debug project errors?',
+    answer:
+      'Read the error message carefully, reproduce the problem, and identify which part of your code causes it. Test one possible fix at a time and consult documentation when needed.',
+    followUps: ['improve-existing-project'],
+  },
+  {
+    id: 'write-project-documentation',
+    question: 'How do I write project documentation?',
+    answer:
+      "Create a README explaining the project's purpose, features, technology stack, setup instructions, usage, and screenshots or demo link. Include any important limitations and acknowledge external resources where appropriate.",
+    followUps: ['project-readme-contents'],
+  },
+  {
+    id: 'upload-project-github',
+    question: 'How do I upload my project to GitHub?',
+    answer:
+      'Create a repository, initialise Git if needed, commit your project files, and push them to GitHub. Check your .gitignore and never upload API keys, passwords, .env files, or private data.',
+    followUps: ['project-readme-contents'],
+  },
+  {
+    id: 'deploy-project-online',
+    question: 'How do I deploy my project online?',
+    answer:
+      'Choose a hosting platform suitable for your technology stack, configure the required build settings and environment variables, and test the deployed application. Keep secrets on the server rather than exposing them in frontend code.',
+    followUps: ['make-project-unique'],
+  },
+  {
+    id: 'improve-existing-project',
+    question: 'How do I improve an existing project?',
+    answer:
+      'Start by identifying a real limitation, such as poor usability, missing validation, slow performance, or incomplete features. Fix the most important issue first, then test the improvement.',
+    followUps: ['debug-project-errors'],
+  },
+  {
+    id: 'make-project-unique',
+    question: 'How do I make my project unique?',
+    answer:
+      'Understand the problem your project solves and identify what existing solutions do not address well. Add a meaningful improvement, such as a better workflow, accessibility, useful analytics, or reliable error handling.',
+    followUps: ['turn-idea-into-product'],
+  },
+  {
+    id: 'project-readme-contents',
+    question: 'What should my project README contain?',
+    answer:
+      'Include a project overview, key features, technology stack, installation steps, configuration requirements, usage instructions, screenshots or demo links, and contribution details where relevant.',
+    followUps: ['upload-project-github'],
+  },
+  {
+    id: 'explain-project-in-interviews',
+    question: 'How do I explain my project in interviews?',
+    answer:
+      'Explain the problem, your approach, the technology choices, your individual contribution, and the challenges you solved. Be ready to discuss trade-offs and demonstrate the working project.',
+    followUps: ['prepare-interviews'],
+  },
+  {
+    id: 'turn-idea-into-product',
+    question: 'How do I turn an idea into a working product?',
+    answer:
+      'Write down the problem and intended users, define the minimum useful features, build a small prototype, and test it. Improve the product using feedback rather than trying to build everything at once.',
+    followUps: ['start-first-project'],
+  },
+  {
+    id: 'find-fresher-jobs',
+    question: 'How do I find fresher job opportunities?',
+    answer:
+      'Check company career pages, reputable job portals, internship listings, and your college placement resources. Tailor your resume to relevant roles, maintain a portfolio, and track the applications you submit.',
+    followUps: ['prepare-campus-placements'],
+  },
+  {
+    id: 'prepare-aptitude-tests',
+    question: 'How do I prepare for aptitude tests?',
+    answer:
+      'Practise quantitative aptitude, logical reasoning, and verbal ability according to the test syllabus. Solve timed questions, review mistakes, and focus on improving accuracy before increasing speed.',
+    followUps: ['prepare-technical-round'],
+  },
+  {
+    id: 'answer-hr-questions',
+    question: 'How do I answer HR questions?',
+    answer:
+      'Prepare concise, honest answers about your background, strengths, goals, projects, and challenges. Use specific examples where possible, and practise speaking naturally instead of memorising entire scripts.',
+    followUps: ['improve-communication'],
+  },
+  {
+    id: 'explain-college-projects',
+    question: 'How do I explain my college projects?',
+    answer:
+      'Describe the problem, your solution, the technologies used, and what you personally contributed. Explain one technical challenge you faced and how you solved it.',
+    followUps: ['explain-project-in-interviews'],
+  },
+  {
+    id: 'portfolio-contents',
+    question: 'What should I include in my portfolio?',
+    answer:
+      'Include relevant projects, a short introduction, your technical skills, project descriptions, and links to working demos or GitHub repositories. Keep the content organised and ensure every link works.',
+    followUps: ['first-portfolio'],
+  },
+  {
+    id: 'prepare-technical-round',
+    question: 'How do I prepare for a technical round?',
+    answer:
+      'Review the fundamentals of your target role, practise problem-solving questions, and understand the projects listed on your resume. Practise explaining your reasoning, not just giving the final answer.',
+    followUps: ['prepare-interviews'],
+  },
+  {
+    id: 'apply-without-internship',
+    question: 'How do I apply without internship experience?',
+    answer:
+      'Apply for suitable fresher roles and internships that accept candidates without prior experience. Highlight relevant projects, coursework, practical skills, and evidence of independent learning.',
+    followUps: ['showcase-projects'],
+  },
+  {
+    id: 'improve-communication',
+    question: 'How do I improve my communication skills?',
+    answer:
+      'Practise explaining technical concepts in simple language, summarising your projects aloud, and answering common interview questions. Record yourself occasionally and work on clarity, structure, and confidence.',
+    followUps: ['answer-hr-questions'],
+  },
+  {
+    id: 'handle-interview-rejection',
+    question: 'How do I handle interview rejection?',
+    answer:
+      'Give yourself time to process the disappointment, review any feedback, and identify one area to improve. Continue practising and applying to suitable roles. A rejection does not automatically mean you lack ability.',
+    followUps: ['improve-next'],
+  },
+  {
+    id: 'prepare-campus-placements',
+    question: 'How do I prepare for campus placements?',
+    answer:
+      "Prepare your resume, practise aptitude and technical questions, revise your core subjects, and rehearse HR interviews. Keep your projects ready to demonstrate and check your college's placement requirements.",
+    followUps: ['prepare-technical-round'],
+  },
+  {
+    id: 'use-without-account',
+    question: 'Can I use Pathwise without an account?',
+    answer:
+      'Yes! Pathwise is designed to be accessible without requiring login. You can use the available features directly, subject to the current implementation.',
+    followUps: ['how-use-pathwise'],
+  },
+  {
+    id: 'pathwise-free-to-use',
+    question: 'Is Pathwise free to use?',
+    answer:
+      'Yes, Pathwise is intended to be a free career guidance platform. No paid subscription is required to use its intended free features.',
+    followUps: ['what-can-pathwise-do'],
+  },
+  {
+    id: 'uploaded-resume-handling',
+    question: 'What happens to my uploaded resume?',
+    answer:
+      "Resume handling depends on Pathwise's current implementation and its AI-processing workflow. Review the privacy information before uploading sensitive information, and avoid including details that are unnecessary for analysis.",
+    followUps: ['resume-data-safe'],
+  },
+  {
+    id: 'file-not-uploading',
+    question: 'Why is my file not uploading?',
+    answer:
+      'Check that your file uses a supported format, meets the size limit, and is not damaged or password-protected. If the problem continues, try another readable copy of your resume.',
+    followUps: ['file-formats-supported'],
+  },
+  {
+    id: 'analysis-failed',
+    question: 'Why did my analysis fail?',
+    answer:
+      'Analysis may fail if the file cannot be parsed, the extracted text is insufficient, or the AI service encounters an error. Check your file and try again later if the service is temporarily unavailable.',
+    followUps: ['file-not-uploading'],
+  },
+  {
+    id: 'score-looks-incorrect',
+    question: 'What if my score looks incorrect?',
+    answer:
+      'Review the scoring criteria and the evidence extracted from your resume. Check whether important information was missed or parsed incorrectly. Treat the score as an indicator for improvement, not an absolute measure of your abilities.',
+    followUps: ['improve-resume'],
+  },
+  {
+    id: 'download-roadmap',
+    question: 'Can I download my roadmap?',
+    answer:
+      'If roadmap PDF export is available in your current version, use the download option on the roadmap page. If it is missing, check whether the feature has been implemented in your build.',
+    followUps: ['use-skills-roadmap'],
+  },
+  {
+    id: 'report-technical-issue',
+    question: 'How do I report a technical issue?',
+    answer:
+      'Try reproducing the issue and note what you were doing when it occurred. Avoid sharing API keys, passwords, or private resume data in screenshots or reports. Use the available feedback or contact option if one is provided.',
+    followUps: ['analysis-failed'],
+  },
+  {
+    id: 'file-formats-supported',
+    question: 'What file formats are supported?',
+    answer:
+      'Pathwise accepts genuine PDF, DOC, and DOCX resume files up to 5 MB. It checks the extension, reported file type, and actual file content before analysis.',
+    followUps: ['file-not-uploading'],
+  },
+  {
+    id: 'use-skills-roadmap',
+    question: 'How do I use my skills roadmap?',
+    answer:
+      'Follow the roadmap in order, work through each priority skill, and complete the suggested practice or project tasks. Track your progress and re-upload your updated resume when you have new evidence to add.',
+    followUps: ['track-progress'],
+  },
+]
+
+export const CHAT_QUESTIONS = [
+  ...CORE_CHAT_QUESTIONS,
+  ...EXPANDED_CHAT_QUESTIONS,
 ]
 
 export const CHAT_CATEGORY_BY_ID = Object.fromEntries(

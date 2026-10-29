@@ -15,7 +15,7 @@ import {
   helpAssistantReducer,
 } from './helpAssistantState.js'
 
-const MAX_VISIBLE_QUESTIONS = 4
+const MAX_VISIBLE_QUESTIONS = 2
 
 function currentTimestamp() {
   return new Intl.DateTimeFormat(undefined, {
@@ -34,6 +34,8 @@ export function HelpAssistant() {
   const panelRef = useRef(null)
   const messagesEndRef = useRef(null)
   const messageSequenceRef = useRef(0)
+  const activeCategoryQuestionIdsRef = useRef([])
+  const seenQuestionIdsRef = useRef(new Set())
   const panelTitleId = useId()
   const conversationId = useId()
 
@@ -83,6 +85,8 @@ export function HelpAssistant() {
   const selectCategory = (categoryId) => {
     const category = CHAT_CATEGORY_BY_ID[categoryId]
     if (!category) return
+    activeCategoryQuestionIdsRef.current = category.questionIds
+    seenQuestionIdsRef.current = new Set()
     dispatch({
       type: 'SELECT_CATEGORY',
       sequence: nextSequence(),
@@ -96,17 +100,40 @@ export function HelpAssistant() {
   const selectQuestion = (questionId) => {
     const question = CHAT_QUESTION_BY_ID[questionId]
     if (!question) return
+    seenQuestionIdsRef.current.add(questionId)
+
+    const unseenCategoryQuestions = activeCategoryQuestionIdsRef.current.filter(
+      (candidateId) => (
+        candidateId !== questionId && !seenQuestionIdsRef.current.has(candidateId)
+      ),
+    )
+    const reusableCategoryQuestions = activeCategoryQuestionIdsRef.current.filter(
+      (candidateId) => candidateId !== questionId,
+    )
+    const nextQuestionIds = [...new Set([
+      ...question.followUps.filter(
+        (candidateId) => (
+          candidateId !== questionId && !seenQuestionIdsRef.current.has(candidateId)
+        ),
+      ),
+      ...unseenCategoryQuestions,
+      ...question.followUps.filter((candidateId) => candidateId !== questionId),
+      ...reusableCategoryQuestions,
+    ])].slice(0, MAX_VISIBLE_QUESTIONS)
+
     dispatch({
       type: 'SELECT_QUESTION',
       sequence: nextSequence(),
       timestamp: currentTimestamp(),
       question: question.question,
       answer: question.answer,
-      followUpIds: question.followUps,
+      followUpIds: nextQuestionIds,
     })
   }
 
   const backToMainMenu = () => {
+    activeCategoryQuestionIdsRef.current = []
+    seenQuestionIdsRef.current = new Set()
     dispatch({
       type: 'MAIN_MENU',
       sequence: nextSequence(),
@@ -116,6 +143,8 @@ export function HelpAssistant() {
 
   const restartConversation = () => {
     messageSequenceRef.current = 0
+    activeCategoryQuestionIdsRef.current = []
+    seenQuestionIdsRef.current = new Set()
     dispatch({ type: 'RESTART', timestamp: currentTimestamp() })
   }
 
@@ -218,13 +247,15 @@ export function HelpAssistant() {
                   )
                 })}
                 {state.suggestions.type !== 'categories' && (
-                  <button
-                    type="button"
-                    className="pw-chat-main-menu-button"
-                    onClick={backToMainMenu}
-                  >
-                    Back to main menu
-                  </button>
+                  <div className="pw-chat-main-menu-row">
+                    <button
+                      type="button"
+                      className="pw-chat-main-menu-button"
+                      onClick={backToMainMenu}
+                    >
+                      Back to main menu
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
