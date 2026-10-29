@@ -1,5 +1,5 @@
-import React from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import React, { useEffect, useRef } from 'react'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
   BookOpen,
   UploadCloud,
@@ -24,6 +24,44 @@ export function Navbar({
   onNavigateHome,
   onCancelAnalysis,
 }) {
+  const location = useLocation()
+  const stepNavRef = useRef(null)
+
+  useEffect(() => {
+    const nav = stepNavRef.current
+    if (!nav) return undefined
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const activeStep = nav.querySelector('.ag-step-link.is-active')
+      if (!activeStep) return
+
+      const navRect = nav.getBoundingClientRect()
+      const activeRect = activeStep.getBoundingClientRect()
+      const navStyles = window.getComputedStyle(nav)
+      const leftInset = Number.parseFloat(navStyles.paddingLeft) || 0
+      const rightInset = Number.parseFloat(navStyles.paddingRight) || 0
+      const visibleLeft = navRect.left + leftInset
+      const visibleRight = navRect.right - rightInset
+      let nextScrollLeft = nav.scrollLeft
+
+      if (activeRect.left < visibleLeft) {
+        nextScrollLeft -= visibleLeft - activeRect.left
+      } else if (activeRect.right > visibleRight) {
+        nextScrollLeft += activeRect.right - visibleRight
+      }
+
+      if (nextScrollLeft !== nav.scrollLeft) {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        nav.scrollTo({
+          left: nextScrollLeft,
+          behavior: reduceMotion ? 'auto' : 'smooth',
+        })
+      }
+    })
+
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [location.pathname, isAnalyzed, latestResumeId, activeRoleId])
+
   const scrollToLandingSection = (event, sectionId) => {
     event.preventDefault()
 
@@ -56,7 +94,7 @@ export function Navbar({
           </Link>
 
           {!isLoading && isAnalyzed && latestResumeId && (
-            <nav className="ag-step-nav" aria-label="Student journey steps">
+            <nav ref={stepNavRef} className="ag-step-nav" aria-label="Student journey steps">
               <NavLink
                 to={`/analysis/${latestResumeId}`}
                 className={({ isActive }) => `ag-step-link ${isActive ? 'is-active' : ''}`}
