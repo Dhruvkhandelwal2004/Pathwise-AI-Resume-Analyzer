@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Award,
   CheckCircle2,
@@ -17,7 +17,12 @@ import {
   Globe,
   Link2,
   LayoutGrid,
+  ExternalLink,
+  Copy,
+  Check,
 } from 'lucide-react'
+
+import { normalizeContactUrl } from '../utils/contactLinks.js'
 
 function hasText(val) {
   return typeof val === 'string' && val.trim().length > 0
@@ -27,6 +32,34 @@ function getBarColorClass(score) {
   if (score >= 80) return 'is-emerald'
   if (score >= 50) return 'is-amber'
   return 'is-rose'
+}
+
+function ContactUrlPill({ icon: Icon, label, link, isCopied, onCopy }) {
+  return (
+    <div className="ag-contact-link-pill">
+      <a
+        className="ag-contact-link-anchor"
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Open ${link.href}`}
+      >
+        <Icon size={14} aria-hidden="true" />
+        <span className="ag-contact-link-label">{label}</span>
+        <span className="ag-contact-link-url">{link.display}</span>
+        <ExternalLink size={13} className="ag-contact-link-open-icon" aria-hidden="true" />
+      </a>
+      <button
+        type="button"
+        className="ag-contact-copy-button"
+        onClick={() => onCopy(label, link.href)}
+        aria-label={`Copy ${label} URL`}
+        title={isCopied ? 'Copied' : `Copy ${label} URL`}
+      >
+        {isCopied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+      </button>
+    </div>
+  )
 }
 
 export function AtsScorePage({
@@ -48,6 +81,12 @@ export function AtsScorePage({
     return initial
   })
   const [showFullSections, setShowFullSections] = useState(false)
+  const [copiedContactLink, setCopiedContactLink] = useState(null)
+  const copyResetTimerRef = useRef(null)
+
+  useEffect(() => () => {
+    window.clearTimeout(copyResetTimerRef.current)
+  }, [])
 
   const score = quality?.score ?? 0
   const ats = quality?.atsCompatibility ?? {}
@@ -76,9 +115,37 @@ export function AtsScorePage({
   const improvements = quality?.improvements ?? []
   const strengths = analysis?.strengths?.length ? analysis.strengths : (quality?.strengths ?? [])
   const contact = analysis?.contact ?? {}
+  const linkedinLink = normalizeContactUrl(contact.linkedin, { linkedin: true })
+  const portfolioLink = normalizeContactUrl(contact.website)
 
   const toggleCriterion = (id) => {
     setExpandedCriteria((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const copyContactLink = async (label, href) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(href)
+      } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = href
+        textArea.setAttribute('readonly', '')
+        textArea.style.position = 'fixed'
+        textArea.style.opacity = '0'
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        textArea.remove()
+      }
+
+      setCopiedContactLink(label)
+      window.clearTimeout(copyResetTimerRef.current)
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setCopiedContactLink(null)
+      }, 1800)
+    } catch {
+      setCopiedContactLink(null)
+    }
   }
 
   return (
@@ -320,8 +387,24 @@ export function AtsScorePage({
               {hasText(contact.email) && <span className="ag-contact-pill"><Mail size={13} /> {contact.email}</span>}
               {hasText(contact.phone) && <span className="ag-contact-pill"><Phone size={13} /> {contact.phone}</span>}
               {hasText(contact.location) && <span className="ag-contact-pill"><MapPin size={13} /> {contact.location}</span>}
-              {hasText(contact.linkedin) && <span className="ag-contact-pill"><Link2 size={13} /> LinkedIn</span>}
-              {hasText(contact.website) && <span className="ag-contact-pill"><Globe size={13} /> Website</span>}
+              {linkedinLink && (
+                <ContactUrlPill
+                  icon={Link2}
+                  label="LinkedIn"
+                  link={linkedinLink}
+                  isCopied={copiedContactLink === 'LinkedIn'}
+                  onCopy={copyContactLink}
+                />
+              )}
+              {portfolioLink && (
+                <ContactUrlPill
+                  icon={Globe}
+                  label="Portfolio"
+                  link={portfolioLink}
+                  isCopied={copiedContactLink === 'Portfolio'}
+                  onCopy={copyContactLink}
+                />
+              )}
             </div>
           </div>
 

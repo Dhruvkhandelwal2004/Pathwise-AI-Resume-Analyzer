@@ -14,8 +14,12 @@ Create a new Render Blueprint from this repository and select the root
 - `pathwise-python-api-dhruv`
 - `pathwise-node-api-dhruv`
 
-When Render prompts for `GROQ_API_KEY`, enter the key in the Render dashboard.
-Never add the key to this repository.
+For a single key, set `GROQ_API_KEY` in the Render dashboard. To enable
+automatic key failover, set `GROQ_API_KEYS` to the complete ordered,
+comma-separated list of primary and fallback keys. A distinct legacy
+`GROQ_API_KEY` is appended as the final fallback. The resume service switches
+to the next key after authentication, permission, rate-limit, timeout,
+connection, or upstream server failures. Never add any key to this repository.
 
 After both health checks pass, record the two public `onrender.com` URLs.
 

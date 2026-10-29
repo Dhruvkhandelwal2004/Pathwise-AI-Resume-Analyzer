@@ -104,6 +104,7 @@ Return only the JSON object required by the response schema."""
 
 PROFILE_TASK = """Extract all candidate, contact, summary, education, and work or internship facts.
 Include every required property. Capture education scores or grades only as written in education details.
+For contact.linkedin and contact.website, preserve the complete explicit URL from the resume, including its path. Return null instead of a generic label such as LinkedIn, Website, or Portfolio when no actual URL is present.
 Use uncertainties for any ambiguous, incomplete, conflicting, or unreadable facts found anywhere in the resume."""
 
 PORTFOLIO_TASK = """Extract all projects, explicit skills, certificates, achievements, activities, and other resume facts.
@@ -425,6 +426,41 @@ def _model_candidates(primary_model: str) -> list[str]:
     return candidates
 
 
+def _api_key_candidates() -> list[str]:
+    candidates: list[str] = []
+    configured_list = os.getenv("GROQ_API_KEYS", "")
+    legacy_key = os.getenv("GROQ_API_KEY", "")
+
+    for item in [*re.split(r"[,;\n]", configured_list), legacy_key]:
+        api_key = item.strip()
+        if api_key and api_key not in candidates:
+            candidates.append(api_key)
+
+    return candidates
+
+
+class _GroqClientPool:
+    def __init__(self, api_keys: list[str]):
+        self._clients = [
+            Groq(
+                api_key=api_key,
+                timeout=_timeout_seconds(),
+                max_retries=_max_retries(),
+            )
+            for api_key in api_keys
+        ]
+
+    @property
+    def current(self) -> Groq:
+        return self._clients[0]
+
+    def switch_to_next(self) -> bool:
+        if len(self._clients) <= 1:
+            return False
+        self._clients.pop(0)
+        return True
+
+
 def _upstream_error_details(error: APIStatusError) -> dict:
     body = error.body
     if not isinstance(body, dict):
@@ -493,7 +529,7 @@ def _create_json_completion(
 
 
 def _generate_validated_part(
-    client: Groq,
+    client_pool: _GroqClientPool,
     model_candidates: list[str],
     text: str,
     response_schema: dict,
@@ -507,36 +543,67 @@ def _generate_validated_part(
     last_output_error: json.JSONDecodeError | ValidationError | None = None
     last_failure = "provider"
     for candidate_model in model_candidates:
+        skip_to_next_model = False
         for attempt in range(STRUCTURED_OUTPUT_ATTEMPTS):
-            try:
-                response = _create_json_completion(
-                    client,
-                    candidate_model,
-                    text,
-                    response_schema,
-                    task_instruction,
-                )
-            except RateLimitError as exc:
-                # Rate limits can be model-specific. After SDK backoff is
-                # exhausted, try the configured fallback model once.
-                last_retryable_error = exc
-                last_failure = "rate_limit"
-                break
-            except APITimeoutError as exc:
-                raise PipelineError("ai_timeout", 504) from exc
-            except (AuthenticationError, PermissionDeniedError) as exc:
-                raise PipelineError("ai_not_configured", 503) from exc
-            except APIStatusError as exc:
-                if _is_retryable_structured_output_error(exc):
-                    last_retryable_error = exc
-                    last_failure = "provider"
-                    if attempt < STRUCTURED_OUTPUT_ATTEMPTS - 1:
+            response = None
+            while response is None and not skip_to_next_model:
+                try:
+                    response = _create_json_completion(
+                        client_pool.current,
+                        candidate_model,
+                        text,
+                        response_schema,
+                        task_instruction,
+                    )
+                except RateLimitError as exc:
+                    if client_pool.switch_to_next():
                         continue
-                    break
-                safe_status = exc.status_code if 400 <= exc.status_code <= 599 else 0
-                raise PipelineError(f"ai_provider_http_{safe_status}", 502) from exc
-            except APIConnectionError as exc:
-                raise PipelineError("ai_connection_error", 502) from exc
+                    # With no key left to rotate to, preserve the existing
+                    # model fallback for model-specific rate limits.
+                    last_retryable_error = exc
+                    last_failure = "rate_limit"
+                    skip_to_next_model = True
+                except APITimeoutError as exc:
+                    if client_pool.switch_to_next():
+                        continue
+                    raise PipelineError("ai_timeout", 504) from exc
+                except AuthenticationError as exc:
+                    if client_pool.switch_to_next():
+                        continue
+                    raise PipelineError("ai_authentication_failed", 503) from exc
+                except PermissionDeniedError as exc:
+                    if client_pool.switch_to_next():
+                        continue
+                    raise PipelineError("ai_permission_denied", 503) from exc
+                except APIStatusError as exc:
+                    if _is_retryable_structured_output_error(exc):
+                        last_retryable_error = exc
+                        last_failure = "provider"
+                        if attempt >= STRUCTURED_OUTPUT_ATTEMPTS - 1:
+                            skip_to_next_model = True
+                        break
+
+                    safe_status = (
+                        exc.status_code if 400 <= exc.status_code <= 599 else 0
+                    )
+                    if (
+                        safe_status in {401, 403, 429}
+                        or 500 <= safe_status <= 599
+                    ) and client_pool.switch_to_next():
+                        continue
+                    raise PipelineError(
+                        f"ai_provider_http_{safe_status}", 502
+                    ) from exc
+                except APIConnectionError as exc:
+                    if client_pool.switch_to_next():
+                        continue
+                    raise PipelineError("ai_connection_error", 502) from exc
+
+            if skip_to_next_model:
+                break
+
+            if response is None:
+                continue
 
             content = response.choices[0].message.content
             if not content:
@@ -575,23 +642,19 @@ def _generate_validated_part(
 
 def analyze_resume_text(text: str) -> tuple[ResumeAnalysis, str]:
     load_runtime_environment()
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    api_keys = _api_key_candidates()
+    if not api_keys:
         raise PipelineError("ai_not_configured", 503)
 
     model = os.getenv("GROQ_MODEL", DEFAULT_MODEL)
     # Groq can briefly return 429/5xx responses during traffic bursts. The SDK
     # respects Retry-After and applies bounded exponential backoff, so transient
     # provider pressure does not immediately surface as a failed analysis.
-    client = Groq(
-        api_key=api_key,
-        timeout=_timeout_seconds(),
-        max_retries=_max_retries(),
-    )
+    client_pool = _GroqClientPool(api_keys)
     candidates = _model_candidates(model)
 
     core_profile, core_model = _generate_validated_part(
-        client,
+        client_pool,
         candidates,
         text,
         RESUME_CORE_PROFILE_SCHEMA,
@@ -599,7 +662,7 @@ def analyze_resume_text(text: str) -> tuple[ResumeAnalysis, str]:
         ResumeCoreProfile,
     )
     portfolio, portfolio_model = _generate_validated_part(
-        client,
+        client_pool,
         candidates,
         text,
         RESUME_PORTFOLIO_SCHEMA,
@@ -607,7 +670,7 @@ def analyze_resume_text(text: str) -> tuple[ResumeAnalysis, str]:
         ResumePortfolio,
     )
     guidance, guidance_model = _generate_validated_part(
-        client,
+        client_pool,
         candidates,
         text,
         RESUME_GUIDANCE_SCHEMA,

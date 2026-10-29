@@ -54,6 +54,8 @@ const ERROR_MESSAGES = {
   ai_rate_limited: 'The AI service is busy. Please try again shortly.',
   ai_timeout: 'Analysis took too long. Please try again.',
   ai_not_configured: 'The AI service is not configured.',
+  ai_authentication_failed: 'The configured Groq API key is invalid or expired. Update GROQ_API_KEY and try again.',
+  ai_permission_denied: 'The configured Groq account does not have permission to use this AI model.',
   ai_provider_error: 'The AI service could not complete this analysis.',
   ai_provider_http_400: 'The AI service could not produce a schema-valid result after retrying. Please try again shortly.',
   ai_provider_http_500: 'The AI service is temporarily unavailable. Please try again shortly.',

@@ -3506,6 +3506,94 @@
   border-radius: 8px;
 }
 
+.ag-contact-link-pill {
+  flex: 1 1 320px;
+  min-width: 0;
+  max-width: min(100%, 460px);
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid #cfe3da;
+  border-radius: 10px;
+  background: #f7fbf9;
+}
+
+.ag-contact-link-anchor {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.ag-contact-link-anchor > svg:first-child {
+  flex: 0 0 auto;
+  color: #0f7656;
+}
+
+.ag-contact-link-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f7656;
+}
+
+.ag-contact-link-url {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: #475569;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-contact-link-open-icon {
+  flex: 0 0 auto;
+  color: #64748b;
+}
+
+.ag-contact-copy-button {
+  width: 38px;
+  flex: 0 0 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-left: 1px solid #cfe3da;
+  background: #edf7f2;
+  color: #0f7656;
+  cursor: pointer;
+}
+
+.ag-contact-link-anchor:hover,
+.ag-contact-copy-button:hover {
+  background: #e4f3ec;
+}
+
+.ag-contact-link-anchor:focus-visible,
+.ag-contact-copy-button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid rgba(15, 118, 86, 0.24);
+  outline-offset: -2px;
+}
+
+@media (max-width: 768px) {
+  .ag-contact-link-pill {
+    width: 100%;
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+
+  .ag-contact-link-anchor {
+    padding-block: 8px;
+  }
+}
+
 .ag-profile-skills-bar {
   padding-top: 16px;
 }

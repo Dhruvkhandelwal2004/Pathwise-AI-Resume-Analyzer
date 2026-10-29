@@ -9,6 +9,8 @@ from models import (
 )
 from pipeline import (
     GUIDANCE_TASK,
+    _GroqClientPool,
+    _api_key_candidates,
     _create_json_completion,
     _is_retryable_structured_output_error,
     _max_completion_tokens,
@@ -134,6 +136,40 @@ class StructuredOutputRetryTests(unittest.TestCase):
 
 
 class ProviderRetryConfigurationTests(unittest.TestCase):
+    def test_builds_an_ordered_deduplicated_api_key_list(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "GROQ_API_KEYS": "key-a, key-b;key-a\nkey-c",
+                "GROQ_API_KEY": "legacy-key",
+            },
+            clear=True,
+        ):
+            self.assertEqual(
+                _api_key_candidates(),
+                ["key-a", "key-b", "key-c", "legacy-key"],
+            )
+
+    def test_uses_legacy_key_when_no_key_list_is_configured(self):
+        with patch.dict(
+            "os.environ",
+            {"GROQ_API_KEY": "legacy-key"},
+            clear=True,
+        ):
+            self.assertEqual(_api_key_candidates(), ["legacy-key"])
+
+    def test_client_pool_switches_forward_without_reusing_failed_key(self):
+        with patch("pipeline.Groq", side_effect=lambda **kwargs: kwargs["api_key"]):
+            pool = _GroqClientPool(["key-a", "key-b", "key-c"])
+
+        self.assertEqual(pool.current, "key-a")
+        self.assertTrue(pool.switch_to_next())
+        self.assertEqual(pool.current, "key-b")
+        self.assertTrue(pool.switch_to_next())
+        self.assertEqual(pool.current, "key-c")
+        self.assertFalse(pool.switch_to_next())
+        self.assertEqual(pool.current, "key-c")
+
     def test_uses_two_provider_retries_by_default(self):
         with patch.dict("os.environ", {}, clear=True):
             self.assertEqual(_max_retries(), 2)

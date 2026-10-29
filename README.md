@@ -59,6 +59,7 @@ Pathwise is an AI-powered career guidance platform designed to help students and
 
    - `AI_PROVIDER`
    - `GROQ_API_KEY`
+   - `GROQ_API_KEYS` (optional ordered, comma-separated fallback keys)
    - `GROQ_MODEL`
    - `AI_TIMEOUT_MS`
 
