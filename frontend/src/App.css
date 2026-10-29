@@ -2371,7 +2371,8 @@
   color: #475569;
 }
 
-.pw-chat-main-menu-row {
+.pw-chat-main-menu-row,
+.pw-chat-more-questions-row {
   flex: 0 0 100%;
 }
 

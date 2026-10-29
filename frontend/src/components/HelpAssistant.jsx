@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useReducer, useRef } from 'react'
+import React, { useEffect, useId, useReducer, useRef, useState } from 'react'
 import {
   Bot,
   CheckCheck,
@@ -30,6 +30,7 @@ export function HelpAssistant() {
     undefined,
     () => createInitialChatState(currentTimestamp()),
   )
+  const [questionPage, setQuestionPage] = useState(0)
   const triggerRef = useRef(null)
   const panelRef = useRef(null)
   const messagesEndRef = useRef(null)
@@ -87,6 +88,7 @@ export function HelpAssistant() {
     if (!category) return
     activeCategoryQuestionIdsRef.current = category.questionIds
     seenQuestionIdsRef.current = new Set()
+    setQuestionPage(0)
     dispatch({
       type: 'SELECT_CATEGORY',
       sequence: nextSequence(),
@@ -101,6 +103,7 @@ export function HelpAssistant() {
     const question = CHAT_QUESTION_BY_ID[questionId]
     if (!question) return
     seenQuestionIdsRef.current.add(questionId)
+    setQuestionPage(0)
 
     const unseenCategoryQuestions = activeCategoryQuestionIdsRef.current.filter(
       (candidateId) => (
@@ -119,7 +122,7 @@ export function HelpAssistant() {
       ...unseenCategoryQuestions,
       ...question.followUps.filter((candidateId) => candidateId !== questionId),
       ...reusableCategoryQuestions,
-    ])].slice(0, MAX_VISIBLE_QUESTIONS)
+    ])]
 
     dispatch({
       type: 'SELECT_QUESTION',
@@ -134,6 +137,7 @@ export function HelpAssistant() {
   const backToMainMenu = () => {
     activeCategoryQuestionIdsRef.current = []
     seenQuestionIdsRef.current = new Set()
+    setQuestionPage(0)
     dispatch({
       type: 'MAIN_MENU',
       sequence: nextSequence(),
@@ -145,7 +149,23 @@ export function HelpAssistant() {
     messageSequenceRef.current = 0
     activeCategoryQuestionIdsRef.current = []
     seenQuestionIdsRef.current = new Set()
+    setQuestionPage(0)
     dispatch({ type: 'RESTART', timestamp: currentTimestamp() })
+  }
+
+  const isQuestionList = state.suggestions.type === 'questions'
+  const questionPageCount = isQuestionList
+    ? Math.ceil(state.suggestions.ids.length / MAX_VISIBLE_QUESTIONS)
+    : 1
+  const visibleSuggestionIds = isQuestionList
+    ? state.suggestions.ids.slice(
+        questionPage * MAX_VISIBLE_QUESTIONS,
+        (questionPage + 1) * MAX_VISIBLE_QUESTIONS,
+      )
+    : state.suggestions.ids
+
+  const showMoreQuestions = () => {
+    setQuestionPage((currentPage) => (currentPage + 1) % questionPageCount)
   }
 
   return (
@@ -222,10 +242,7 @@ export function HelpAssistant() {
                   : 'Suggested questions'}
               </span>
               <div className="pw-chat-suggestion-list">
-                {(state.suggestions.type === 'questions'
-                  ? state.suggestions.ids.slice(0, MAX_VISIBLE_QUESTIONS)
-                  : state.suggestions.ids
-                ).map((suggestionId, index) => {
+                {visibleSuggestionIds.map((suggestionId, index) => {
                   const isCategory = state.suggestions.type === 'categories'
                   const item = isCategory
                     ? CHAT_CATEGORY_BY_ID[suggestionId]
@@ -246,6 +263,17 @@ export function HelpAssistant() {
                     </button>
                   )
                 })}
+                {isQuestionList && questionPageCount > 1 && (
+                  <div className="pw-chat-more-questions-row">
+                    <button
+                      type="button"
+                      onClick={showMoreQuestions}
+                      aria-label="Show more questions"
+                    >
+                      More questions
+                    </button>
+                  </div>
+                )}
                 {state.suggestions.type !== 'categories' && (
                   <div className="pw-chat-main-menu-row">
                     <button
