@@ -692,9 +692,18 @@ export function App() {
   const latestRecord = latestStore.latestResumeId
     ? latestStore.records[latestStore.latestResumeId]
     : null
+  const isResumeReportRoute = [
+    '/analysis/',
+    '/careers/',
+    '/roadmap/',
+  ].some((routePrefix) => location.pathname.startsWith(routePrefix))
+  const isMissingSession = !loading && isResumeReportRoute && !latestRecord
 
   return (
-    <div className={`enhancv-app-shell${loading ? ' is-loading' : ''}`} id="top">
+    <div
+      className={`enhancv-app-shell${loading ? ' is-loading' : ''}${isMissingSession ? ' is-missing-session' : ''}`}
+      id="top"
+    >
       <Navbar
         activeTargetRole={careerPlanState.activePlan?.targetRoleTitle}
         isAnalyzed={Boolean(latestRecord) && location.pathname !== '/'}

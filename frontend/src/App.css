@@ -5262,6 +5262,44 @@
 }
 
 @media (max-width: 768px) {
+  .enhancv-app-shell.is-missing-session {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .enhancv-app-shell.is-missing-session .enhancv-navbar,
+  .enhancv-app-shell.is-missing-session .pw-footer {
+    flex: 0 0 auto;
+  }
+  .enhancv-app-shell.is-missing-session .ag-missing-session-wrap {
+    position: static;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 1rem;
+    overflow: hidden;
+    transform: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .enhancv-app-shell.is-missing-session .ag-missing-session-card {
+    width: min(100%, 620px);
+    padding: 2rem 1.5rem;
+  }
+  .enhancv-app-shell.is-missing-session .pw-footer {
+    margin-top: 0;
+    padding-block: 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
+  .enhancv-app-shell.is-missing-session .pw-chat-assistant {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  }
+
   .enhancv-app-shell.is-loading {
     position: fixed;
     inset: 0;
