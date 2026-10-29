@@ -4961,7 +4961,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: #dcfce7;
+  background: #ffffff;
+  border: 1px solid #d6e8df;
   color: #166534;
   font-size: 12px;
   font-weight: 600;
