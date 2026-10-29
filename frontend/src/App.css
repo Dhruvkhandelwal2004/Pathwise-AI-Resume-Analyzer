@@ -5368,7 +5368,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.45rem 0.75rem;
+    gap: 0.55rem 0.75rem;
+    padding-block: 0.6rem;
   }
   .navbar-container.is-analyzed .navbar-brand-group {
     display: contents;
@@ -5385,8 +5386,9 @@
     margin-left: 0;
   }
   .navbar-container.is-analyzed .navbar-cta-button {
-    padding: 0.46rem 0.72rem;
-    font-size: 0.78rem;
+    min-height: 38px;
+    padding: 0.52rem 0.82rem;
+    font-size: 0.8rem;
   }
   .navbar-container.is-analyzed .ag-step-nav {
     grid-column: 1 / -1;
