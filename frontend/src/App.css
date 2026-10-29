@@ -5297,7 +5297,7 @@
     padding-block: 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
   }
   .enhancv-app-shell.is-missing-session .pw-chat-assistant {
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    display: none;
   }
 
   .enhancv-app-shell.is-loading {
