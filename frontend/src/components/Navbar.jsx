@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
   BookOpen,
@@ -7,12 +7,22 @@ import {
   Target,
   Gauge,
   Map,
+  Menu,
+  X,
   XCircle,
 } from 'lucide-react'
 import {
   smoothScrollToElement,
   smoothScrollToTop,
 } from '../utils/smoothScroll.js'
+
+const LANDING_NAV_ITEMS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'features', label: 'Features' },
+  { id: 'how-it-works', label: 'How It Works' },
+  { id: 'modules', label: 'Core Modules' },
+  { id: 'faqs', label: 'FAQs' },
+]
 
 export function Navbar({
   activeTargetRole,
@@ -26,6 +36,11 @@ export function Navbar({
 }) {
   const location = useLocation()
   const stepNavRef = useRef(null)
+  const mobileMenuRef = useRef(null)
+  const mobileMenuToggleRef = useRef(null)
+  const [mobileMenuLocationKey, setMobileMenuLocationKey] = useState(null)
+  const isLandingPage = !isAnalyzed && location.pathname === '/'
+  const isMobileMenuOpen = isLandingPage && mobileMenuLocationKey === location.key
 
   useEffect(() => {
     const nav = stepNavRef.current
@@ -62,8 +77,37 @@ export function Navbar({
     return () => window.cancelAnimationFrame(animationFrame)
   }, [location.pathname, isAnalyzed, latestResumeId, activeRoleId])
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined
+
+    const body = document.body
+    const previousOverflow = body.style.overflow
+    const previousOverscrollBehavior = body.style.overscrollBehavior
+    const focusFrame = window.requestAnimationFrame(() => {
+      mobileMenuRef.current?.querySelector('a')?.focus()
+    })
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      setMobileMenuLocationKey(null)
+      window.requestAnimationFrame(() => mobileMenuToggleRef.current?.focus())
+    }
+
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      body.style.overflow = previousOverflow
+      body.style.overscrollBehavior = previousOverscrollBehavior
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isMobileMenuOpen])
+
   const scrollToLandingSection = (event, sectionId) => {
     event.preventDefault()
+    setMobileMenuLocationKey(null)
 
     if (sectionId === 'overview') {
       smoothScrollToTop()
@@ -129,19 +173,18 @@ export function Navbar({
           )}
         </div>
 
-        {!isLoading && !isAnalyzed && (
+        {!isLoading && isLandingPage && (
           <nav className="pw-landing-nav-links" aria-label="Landing page navigation">
-            <a
-              href="#overview"
-              className="pw-nav-link"
-              onClick={(event) => scrollToLandingSection(event, 'overview')}
-            >
-              Overview
-            </a>
-            <a href="#features" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'features')}>Features</a>
-            <a href="#how-it-works" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'how-it-works')}>How It Works</a>
-            <a href="#modules" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'modules')}>Core Modules</a>
-            <a href="#faqs" className="pw-nav-link" onClick={(event) => scrollToLandingSection(event, 'faqs')}>FAQs</a>
+            {LANDING_NAV_ITEMS.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="pw-nav-link"
+                onClick={(event) => scrollToLandingSection(event, item.id)}
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
         )}
 
@@ -176,6 +219,21 @@ export function Navbar({
               </>
             ) : (
               <>
+                {isLandingPage && (
+                  <button
+                    ref={mobileMenuToggleRef}
+                    type="button"
+                    className="pw-mobile-nav-toggle"
+                    onClick={() => setMobileMenuLocationKey(
+                      isMobileMenuOpen ? null : location.key,
+                    )}
+                    aria-expanded={isMobileMenuOpen}
+                    aria-controls="pathwise-mobile-navigation"
+                    aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                  >
+                    {isMobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="pw-nav-btn-outline"
@@ -196,6 +254,34 @@ export function Navbar({
           </div>
         )}
       </div>
+
+      {isLandingPage && isMobileMenuOpen && (
+        <>
+          <button
+            type="button"
+            className="pw-mobile-nav-scrim"
+            onClick={() => setMobileMenuLocationKey(null)}
+            aria-label="Close navigation menu"
+          />
+          <nav
+            ref={mobileMenuRef}
+            id="pathwise-mobile-navigation"
+            className="pw-mobile-nav-panel"
+            aria-label="Mobile landing page navigation"
+          >
+            {LANDING_NAV_ITEMS.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="pw-mobile-nav-link"
+                onClick={(event) => scrollToLandingSection(event, item.id)}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </>
+      )}
     </header>
   )
 }
