@@ -5361,6 +5361,8 @@
     overflow-x: auto;
     overflow-y: hidden;
     padding-block: 0.25rem;
+    padding-inline: 0.65rem;
+    scroll-padding-inline: 0.65rem;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     -ms-overflow-style: none;
