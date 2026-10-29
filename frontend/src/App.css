@@ -3444,7 +3444,12 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
+  min-width: 0;
   max-width: 720px;
+}
+
+.ag-profile-identity > div:last-child {
+  min-width: 0;
 }
 
 .ag-profile-avatar {
@@ -3471,6 +3476,7 @@
   font-weight: 700;
   margin: 0;
   color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .ag-meta-chip {
@@ -3490,6 +3496,10 @@
 }
 
 .ag-contact-row {
+  flex: 1 1 320px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -3499,6 +3509,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-size: 12.5px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -3506,11 +3518,17 @@
   border-radius: 8px;
 }
 
+.ag-contact-pill > svg {
+  flex: 0 0 auto;
+}
+
 .ag-contact-link-pill {
   flex: 1 1 320px;
+  width: 100%;
   min-width: 0;
   max-width: min(100%, 460px);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
   align-items: stretch;
   overflow: hidden;
   border: 1px solid #cfe3da;
@@ -3519,11 +3537,12 @@
 }
 
 .ag-contact-link-anchor {
+  width: 100%;
   min-width: 0;
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 7px;
+  overflow: hidden;
   padding: 7px 9px;
   color: #0f172a;
   text-decoration: none;
@@ -3583,10 +3602,19 @@
 }
 
 @media (max-width: 768px) {
+  .ag-ats-profile-card {
+    padding: 20px;
+  }
+
+  .ag-profile-identity,
+  .ag-contact-row {
+    flex-basis: 100%;
+  }
+
   .ag-contact-link-pill {
     width: 100%;
     max-width: 100%;
-    flex-basis: 100%;
+    flex-basis: auto;
   }
 
   .ag-contact-link-anchor {
