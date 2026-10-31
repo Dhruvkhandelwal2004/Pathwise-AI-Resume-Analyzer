@@ -43,11 +43,9 @@ import {
   MIN_CACHED_ANALYSIS_LOADING_MS,
   navigateAfterMinimumLoading,
 } from './utils/analysisLoading.js'
+import { NODE_API, PYTHON_API } from './utils/apiEndpoints.js'
 
 import './App.css'
-
-const PYTHON_API = import.meta.env.VITE_PYTHON_API_URL ?? ''
-const NODE_API = import.meta.env.VITE_NODE_API_URL ?? ''
 
 const ERROR_MESSAGES = {
   file_not_pdf: 'Please choose a valid PDF file.',

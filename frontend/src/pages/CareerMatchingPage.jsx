@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import axios from 'axios'
+import { NODE_API } from '../utils/apiEndpoints.js'
 import {
   Search,
   Sparkles,
@@ -14,7 +15,6 @@ import {
   User,
 } from 'lucide-react'
 
-const NODE_API = import.meta.env.VITE_NODE_API_URL ?? ''
 const AUTO_MATCH_STORAGE_KEY = 'pathwise-auto-match-enabled-v3'
 const AUTO_MATCH_APPLIED_PREFIX = 'pathwise-auto-match-applied-v2:'
 const autoMatchedResumeIds = new Set()
