@@ -80,6 +80,36 @@ function createValidAnalysis() {
   };
 }
 
+function createCompleteAnalysis(overrides = {}) {
+  const analysis = createValidAnalysis();
+  return {
+    ...analysis,
+    skillProfile: {
+      technical: ["JavaScript", "React"],
+      tools: [],
+      domain: [],
+      interpersonal: [],
+    },
+    strengths: analysis.strengths.map((item) => ({
+      ...item,
+      whyItMatters: "Shows applied project work.",
+    })),
+    weaknesses: analysis.weaknesses.map((item) => ({
+      ...item,
+      whyItMatters: "Clear outcomes help reviewers assess impact.",
+    })),
+    achievements: [],
+    activities: [],
+    additionalInformation: [],
+    evidenceQuality: {
+      level: "mixed",
+      summary: "The resume includes education and project evidence.",
+      evidence: ["The Portfolio project lists React."],
+    },
+    ...overrides,
+  };
+}
+
 function createMockClient(implementation) {
   return {
     chat: {
@@ -98,6 +128,64 @@ test("normalizes a separate text copy conservatively", () => {
   assert.equal(
     original,
     "Jane\u00a0Doe\r\n\u200BJavaScript   Developer\n\n\nReact",
+  );
+});
+
+test("allows an empty required improvementSuggestions array", () => {
+  const result = validateResumeAnalysis(
+    createCompleteAnalysis({ improvementSuggestions: [] }),
+  );
+
+  assert.deepEqual(result.improvementSuggestions, []);
+});
+
+test("accepts a valid improvement suggestion", () => {
+  const suggestion = {
+    observation: "The project has no stated outcome.",
+    evidence: "The Portfolio project explicitly lists React.",
+    suggestion: "Add a genuine outcome if available.",
+    rationale: "Outcomes help reviewers assess project impact.",
+    expectedResult: "The project evidence will be more specific.",
+    priority: "medium",
+  };
+  const result = validateResumeAnalysis(
+    createCompleteAnalysis({ improvementSuggestions: [suggestion] }),
+  );
+
+  assert.deepEqual(result.improvementSuggestions, [suggestion]);
+});
+
+test("still requires the improvementSuggestions field", () => {
+  const analysis = createCompleteAnalysis({ improvementSuggestions: [] });
+  delete analysis.improvementSuggestions;
+
+  assert.throws(
+    () => validateResumeAnalysis(analysis),
+    (error) =>
+      error instanceof InvalidProviderOutputError &&
+      error.diagnosticCategory === "schema_validation" &&
+      error.schemaPath === "/improvementSuggestions",
+  );
+});
+
+test("rejects malformed improvement suggestion objects", () => {
+  const malformed = {
+    observation: "The project has no stated outcome.",
+    evidence: "The Portfolio project explicitly lists React.",
+    suggestion: "Add a genuine outcome if available.",
+    rationale: "   ",
+    expectedResult: "The project evidence will be more specific.",
+    priority: "medium",
+  };
+
+  assert.throws(
+    () => validateResumeAnalysis(
+      createCompleteAnalysis({ improvementSuggestions: [malformed] }),
+    ),
+    (error) =>
+      error instanceof InvalidProviderOutputError &&
+      error.diagnosticCategory === "semantic_validation" &&
+      error.reasonCodes.includes("blank_suggestion"),
   );
 });
 
@@ -267,7 +355,7 @@ test("rejects mocked evidence-rich output with empty assessments instead of fabr
       error instanceof InvalidProviderOutputError &&
       error.diagnosticCategory === "semantic_validation" &&
       error.reasonCodes.includes("missing_strengths") &&
-      error.reasonCodes.includes("missing_improvement_suggestions"),
+      !error.reasonCodes.includes("missing_improvement_suggestions"),
   );
   assert.deepEqual(raw, snapshot);
 });

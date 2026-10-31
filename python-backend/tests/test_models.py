@@ -57,6 +57,66 @@ class ResumeAnalysisCleanupTests(unittest.TestCase):
         self.assertEqual(analysis.projects, [])
 
 
+class ImprovementSuggestionValidationTests(unittest.TestCase):
+    def valid_payload(self) -> dict:
+        project = {
+            "name": "Resume Analyzer",
+            "description": "Built a resume analyzer in Python.",
+            "technologies": ["Python"],
+            "highlights": [],
+            "url": None,
+        }
+        payload = analysis_payload([project])
+        payload["strengths"] = [{
+            "point": "Documents project work.",
+            "evidence": "Built a resume analyzer in Python.",
+            "whyItMatters": "Shows applied technical work.",
+        }]
+        return payload
+
+    def valid_suggestion(self) -> dict:
+        return {
+            "observation": "The project has no stated outcome.",
+            "evidence": "Built a resume analyzer in Python.",
+            "suggestion": "Add a genuine outcome if available.",
+            "rationale": "Outcomes clarify project impact.",
+            "expectedResult": "The project evidence will be more specific.",
+            "priority": "medium",
+        }
+
+    def test_accepts_empty_suggestion_list_with_other_valid_evidence(self):
+        payload = self.valid_payload()
+        payload["improvementSuggestions"] = []
+
+        analysis = ResumeAnalysis.model_validate(payload)
+
+        self.assertEqual(analysis.improvement_suggestions, [])
+
+    def test_accepts_a_valid_suggestion(self):
+        payload = self.valid_payload()
+        payload["improvementSuggestions"] = [self.valid_suggestion()]
+
+        analysis = ResumeAnalysis.model_validate(payload)
+
+        self.assertEqual(len(analysis.improvement_suggestions), 1)
+
+    def test_still_requires_the_suggestions_field(self):
+        payload = self.valid_payload()
+        del payload["improvementSuggestions"]
+
+        with self.assertRaises(ValueError):
+            ResumeAnalysis.model_validate(payload)
+
+    def test_rejects_malformed_suggestion_objects(self):
+        payload = self.valid_payload()
+        malformed = self.valid_suggestion()
+        del malformed["rationale"]
+        payload["improvementSuggestions"] = [malformed]
+
+        with self.assertRaises(ValueError):
+            ResumeAnalysis.model_validate(payload)
+
+
 class EducationScoreTests(unittest.TestCase):
     def test_scores_documented_education_completeness_only(self):
         entry = Education.model_validate(
