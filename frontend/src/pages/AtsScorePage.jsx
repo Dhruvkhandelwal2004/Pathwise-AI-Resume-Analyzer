@@ -464,6 +464,21 @@ export function AtsScorePage({
                   </div>
                 ))}
               </div>
+              <div className="ag-parsed-col">
+                <h4>Certifications ({analysis?.certifications?.length ?? 0})</h4>
+                {(analysis?.certifications ?? []).length > 0 ? (
+                  analysis.certifications.map((cert, idx) => (
+                    <div key={`${cert.name || 'certification'}-${idx}`} className="ag-parsed-item">
+                      <strong>{cert.name || 'Certificate'}</strong>
+                      {(cert.issuer || cert.date) && (
+                        <span>{[cert.issuer, cert.date].filter(Boolean).join(' · ')}</span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="ag-empty-inline">No certificates were found in the extracted resume text.</p>
+                )}
+              </div>
             </div>
           )}
         </section>

@@ -83,6 +83,9 @@ class StructuredOutputRetryTests(unittest.TestCase):
         prompt = request["messages"][0]["content"]
         self.assertIn("Never create a metric", prompt)
         self.assertIn("expected result", prompt)
+        self.assertIn("Technical Expertise", prompt)
+        self.assertIn("Do not treat ordinary prose as a heading", prompt)
+        self.assertIn("A heading with no meaningful content is not a completed section", prompt)
         self.assertIn("skillProfile", request["messages"][1]["content"])
         self.assertNotIn("evidenceQuality", request["messages"][1]["content"])
 

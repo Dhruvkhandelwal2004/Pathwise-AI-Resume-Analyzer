@@ -45,6 +45,11 @@ from persistent_cache import (
     canonical_score_evidence,
     get_default_cache,
 )
+from section_headings import (
+    merge_explicit_resume_sections,
+    normalize_pdf_skill_columns,
+    normalize_section_headings,
+)
 
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024
@@ -85,8 +90,8 @@ DEFAULT_MAX_RETRIES = 2
 DEFAULT_MAX_COMPLETION_TOKENS = 2_048
 QWEN_MAX_COMPLETION_TOKENS = 900
 STRUCTURED_OUTPUT_ATTEMPTS = 2
-EXTRACTION_CONTRACT_VERSION = "resume-extraction-v4"
-PROMPT_VERSION = "resume-prompt-v5"
+EXTRACTION_CONTRACT_VERSION = "resume-extraction-v5"
+PROMPT_VERSION = "resume-prompt-v6"
 DRIVE_FILE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{10,200}$")
 RETRYABLE_STRUCTURED_OUTPUT_CODES = {
     "json_schema_validation_failed",
@@ -102,6 +107,7 @@ Use additionalInformation for other explicit resume facts such as languages, pub
 Keep skills as a flat deduplicated list and also group only those same explicit skills in skillProfile. Do not infer interpersonal skills from job titles or generic responsibilities.
 Record ambiguous, incomplete, conflicting, or unreadable information in uncertainties.
 Missing information means only that it is not shown in the resume.
+Before extracting fields, scan the supplied text for explicit section headings. Recognize heading aliases and formatting variations, including Skills / Technical Skills / Core Skills / Key Skills / Technical Expertise / Areas of Expertise / Technologies; Summary / Professional Summary / Career Summary / Profile Summary / About Me / Professional Profile / Career Objective / Objective; Experience / Work Experience / Professional Experience / Employment History / Work History; Education / Academic Background / Educational Qualifications / Academic Qualifications; Projects / Personal Projects / Academic Projects / Key Projects / Project Experience; and Certifications / Certificates / Professional Certifications / Courses and Certifications / Training and Certifications. Also recognize headings for achievements, awards, publications, activities, volunteering, languages, and interests. Match case-insensitively and ignore bullets, numbering, extra spaces, and heading punctuation. A heading may share a line with its content. Treat a labeled section with meaningful content as present and extract that evidence into its existing schema field. A heading with no meaningful content is not a completed section. Do not treat ordinary prose as a heading. When relevant content is present without a recognizable heading, extract only clearly supported facts and record the uncertainty; do not claim an explicitly labeled section.
 Every strength, weakness, achievement, activity, and additional-information item must include a concise observation, the supporting resume section or wording, and why it matters.
 Weaknesses must describe the resume document, not unsupported judgments about the person.
 Assess evidenceQuality from specificity, clarity, attribution, dates, technologies, responsibilities, and supported outcomes in the document. This assesses resume evidence, not candidate ability.
@@ -207,7 +213,7 @@ def normalize_text(text: str) -> str:
     normalized = re.sub(r"[^\S\n]+", " ", normalized)
     normalized = re.sub(r" *\n *", "\n", normalized)
     normalized = re.sub(r"\n{3,}", "\n\n", normalized)
-    return normalized.strip()
+    return normalize_section_headings(normalized).strip()
 
 
 def validate_document_metadata(filename: str | None, content_type: str | None) -> str:
@@ -383,7 +389,17 @@ def extract_pdf_text(pdf_bytes: bytes) -> tuple[str, int]:
             raise PipelineError("protected_pdf", 422)
         if len(reader.pages) > MAX_PAGES:
             raise PipelineError("too_many_pages", 413)
-        page_text = [(page.extract_text() or "") for page in reader.pages]
+        page_text = []
+        for page in reader.pages:
+            # Layout mode preserves multi-column ordering when it can extract
+            # text. Some PDFs (including image-heavy exports with an embedded
+            # text layer) return an empty string in layout mode while the
+            # regular extractor can still read their selectable text.
+            layout_text = page.extract_text(extraction_mode="layout") or ""
+            if layout_text.strip():
+                page_text.append(normalize_pdf_skill_columns(layout_text))
+            else:
+                page_text.append(page.extract_text() or "")
     except PipelineError:
         raise
     except (PdfReadError, OSError, ValueError) as exc:
@@ -752,6 +768,7 @@ def _analyze_extracted_document(
 
     def produce_analysis() -> dict:
         analysis, model = analyze_resume_text(text)
+        analysis = merge_explicit_resume_sections(analysis, text)
         analysis_payload = analysis.model_dump(by_alias=True)
         analysis_payload["educationScore"] = build_education_score(
             analysis.education
