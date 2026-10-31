@@ -333,8 +333,6 @@ class ResumeAnalysis(StrictModel):
         )
         if has_concrete_evidence and not self.strengths:
             raise ValueError("Evidence-rich analysis requires a strength.")
-        if has_concrete_evidence and not self.improvement_suggestions:
-            raise ValueError("Evidence-rich analysis requires an improvement action.")
         return self
 
 

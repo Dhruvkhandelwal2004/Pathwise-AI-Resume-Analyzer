@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import axios from 'axios'
 import {
   Search,
@@ -15,7 +15,33 @@ import {
 } from 'lucide-react'
 
 const NODE_API = import.meta.env.VITE_NODE_API_URL ?? ''
-const AUTO_MATCH_STORAGE_KEY = 'pathwise-auto-match-enabled-v1'
+const AUTO_MATCH_STORAGE_KEY = 'pathwise-auto-match-enabled-v3'
+const AUTO_MATCH_APPLIED_PREFIX = 'pathwise-auto-match-applied-v2:'
+const autoMatchedResumeIds = new Set()
+
+function hasAppliedInitialAutoMatch(resumeId) {
+  if (autoMatchedResumeIds.has(resumeId)) return true
+
+  try {
+    if (window.sessionStorage.getItem(`${AUTO_MATCH_APPLIED_PREFIX}${resumeId}`) === 'true') {
+      autoMatchedResumeIds.add(resumeId)
+      return true
+    }
+  } catch {
+    // Fall back to the in-memory set when session storage is unavailable.
+  }
+
+  return false
+}
+
+function markInitialAutoMatchApplied(resumeId) {
+  autoMatchedResumeIds.add(resumeId)
+  try {
+    window.sessionStorage.setItem(`${AUTO_MATCH_APPLIED_PREFIX}${resumeId}`, 'true')
+  } catch {
+    // The in-memory set still prevents repeated automatic selection this session.
+  }
+}
 
 function readAutoMatchPreference() {
   if (typeof window === 'undefined') return true
@@ -128,6 +154,9 @@ export function CareerMatchingPage({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [autoMatch, setAutoMatch] = useState(readAutoMatchPreference)
+  const initialAutoMatchAppliedRef = useRef(
+    hasAppliedInitialAutoMatch(resumeId),
+  )
   const [catalogueRoles, setCatalogueRoles] = useState([])
   const [catalogueLoading, setCatalogueLoading] = useState(false)
   const [showUnmatchedTab, setShowUnmatchedTab] = useState(false)
@@ -246,6 +275,26 @@ export function CareerMatchingPage({
     }, null)
     return bestRole?.roleId ?? null
   }, [displayedRoles])
+
+  useEffect(() => {
+    if (!autoMatch || !bestMatchingRoleId || initialAutoMatchAppliedRef.current) {
+      return
+    }
+
+    initialAutoMatchAppliedRef.current = true
+    markInitialAutoMatchApplied(resumeId)
+    if (bestMatchingRoleId !== currentRoleId) {
+      onSelectRole(bestMatchingRoleId)
+    }
+  }, [autoMatch, bestMatchingRoleId, currentRoleId, onSelectRole, resumeId])
+
+  const handleRoleSelection = (roleId) => {
+    if (autoMatch && roleId !== currentRoleId) {
+      saveAutoMatchPreference(false)
+      setAutoMatch(false)
+    }
+    onSelectRole(roleId)
+  }
 
   const handleAutoMatchToggle = () => {
     const nextAutoMatch = !autoMatch
@@ -488,7 +537,7 @@ export function CareerMatchingPage({
                     key={roleItem.roleId}
                     type="button"
                     className={`ag-role-list-card ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => onSelectRole(roleItem.roleId)}
+                    onClick={() => handleRoleSelection(roleItem.roleId)}
                   >
                     <div className="ag-role-card-top">
                       <MiniScoreRing score={displayScore} isActive={isSelected} />

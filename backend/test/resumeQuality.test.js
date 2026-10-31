@@ -10,6 +10,10 @@ const {
   scoreResumeQuality,
 } = require("../services/resumeQualityScoring");
 const { createResumeQualityRouter } = require("../routes/resumeQuality");
+const {
+  PersistentCacheUnavailableError,
+  hashCanonicalAnalysis,
+} = require("../services/persistentResumeCache");
 
 function createAnalysis(overrides = {}) {
   return {
@@ -246,11 +250,38 @@ test("malformed analysis is rejected without partial scoring", () => {
 
 let server;
 let baseUrl;
+let savedQuality;
+let scoreCalls;
+const persistentCache = {
+  async getQuality() {
+    return savedQuality;
+  },
+  async saveQuality(_identity, _analysis, result) {
+    savedQuality = result;
+  },
+};
+
+function cacheIdentityFor(analysis) {
+  return {
+    extractionKey: "resume-key",
+    contentFingerprint: "content-hash",
+    extractionContractVersion: "resume-extraction-v4",
+    promptVersion: "resume-prompt-v5",
+    modelConfiguration: "test-model",
+    canonicalAnalysisHash: hashCanonicalAnalysis(analysis),
+  };
+}
 
 before(async () => {
   const app = express();
   app.use(express.json());
-  app.use("/api/resumes", createResumeQualityRouter());
+  app.use("/api/resumes", createResumeQualityRouter({
+    persistentCache,
+    scoreResumeQuality(analysis) {
+      scoreCalls += 1;
+      return scoreResumeQuality(analysis);
+    },
+  }));
   await new Promise((resolve) => {
     server = app.listen(0, "127.0.0.1", resolve);
   });
@@ -264,18 +295,41 @@ after(async () => {
 });
 
 test("quality-score route returns the transparent deterministic breakdown", async () => {
+  savedQuality = null;
+  scoreCalls = 0;
+  const analysis = createAnalysis();
+  const bodyData = {
+    analysis,
+    cacheIdentity: cacheIdentityFor(analysis),
+  };
   const response = await fetch(`${baseUrl}/api/resumes/quality-score`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ analysis: createAnalysis() }),
+    body: JSON.stringify(bodyData),
   });
   const body = await response.json();
 
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
   assert.equal(body.maxScore, 100);
+  assert.equal(body.cacheStatus, "fresh");
   assert.equal(body.criteria.reduce((sum, item) => sum + item.weight, 0), 100);
   assert.equal(body.score, body.criteria.reduce((sum, item) => sum + item.earned, 0));
+
+  const repeatedResponse = await fetch(`${baseUrl}/api/resumes/quality-score`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(bodyData),
+  });
+  const repeated = await repeatedResponse.json();
+  assert.equal(repeated.cacheStatus, "persistent");
+  assert.equal(scoreCalls, 1);
+  assert.equal(repeated.score, body.score);
+  assert.deepEqual(repeated.criteria, body.criteria);
+  assert.deepEqual(
+    repeated.atsCompatibility.sectionBreakdown,
+    body.atsCompatibility.sectionBreakdown,
+  );
 });
 
 test("quality-score route rejects unsupported or malformed requests", async () => {
@@ -292,4 +346,44 @@ test("quality-score route rejects unsupported or malformed requests", async () =
 
   assert.equal(extraField.status, 400);
   assert.equal(malformed.status, 400);
+});
+
+test("quality-score route fails closed when Atlas is unavailable", async () => {
+  let scoreCallsWhenUnavailable = 0;
+  const app = express();
+  app.use(express.json());
+  app.use("/api/resumes", createResumeQualityRouter({
+    persistentCache: {
+      async getQuality() {
+        throw new PersistentCacheUnavailableError("database unavailable");
+      },
+      async saveQuality() {
+        throw new Error("save must not run");
+      },
+    },
+    scoreResumeQuality(analysis) {
+      scoreCallsWhenUnavailable += 1;
+      return scoreResumeQuality(analysis);
+    },
+  }));
+  const localServer = await new Promise((resolve) => {
+    const running = app.listen(0, "127.0.0.1", () => resolve(running));
+  });
+  try {
+    const response = await fetch(`http://127.0.0.1:${localServer.address().port}/api/resumes/quality-score`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        analysis: createAnalysis(),
+        cacheIdentity: cacheIdentityFor(createAnalysis()),
+      }),
+    });
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal(body.code, "persistent_cache_unavailable");
+    assert.equal(body.score, undefined);
+    assert.equal(scoreCallsWhenUnavailable, 0);
+  } finally {
+    await new Promise((resolve) => localServer.close(resolve));
+  }
 });

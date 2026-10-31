@@ -276,9 +276,6 @@ function validateResumeAnalysis(analysis) {
     if (cleaned.strengths.length === 0) {
       semanticReasons.push("missing_strengths");
     }
-    if (cleaned.improvementSuggestions.length === 0) {
-      semanticReasons.push("missing_improvement_suggestions");
-    }
   }
 
   if (semanticReasons.length > 0) {
