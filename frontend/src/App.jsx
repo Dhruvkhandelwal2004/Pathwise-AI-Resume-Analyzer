@@ -37,12 +37,6 @@ import {
   RESUME_FILE_SIZE_MESSAGE,
   RESUME_FILE_VALIDATION_MESSAGE,
 } from './utils/resumeFileValidation.js'
-import {
-  getAnalysisLoadingStep,
-  MIN_ANALYSIS_LOADING_MS,
-  MIN_CACHED_ANALYSIS_LOADING_MS,
-  navigateAfterMinimumLoading,
-} from './utils/analysisLoading.js'
 
 import './App.css'
 
@@ -70,9 +64,6 @@ const ERROR_MESSAGES = {
   ai_connection_error: 'The server could not connect to the AI service. Check the network and retry.',
   ai_empty_output: 'The AI service returned an empty result.',
   ai_invalid_output: 'The analysis did not pass validation. Please try again.',
-  ai_unsupported_output: 'The analysis contained resume details that could not be verified. Please check the document and retry.',
-  persistent_cache_unavailable: 'Persistent resume storage is temporarily unavailable. Please retry.',
-  persistent_cache_identity_mismatch: 'The saved resume analysis is incomplete or incompatible. Please analyze the resume again.',
 }
 
 const QUALITY_HISTORY_KEY = 'pathwise-quality-score-history-v1'
@@ -125,11 +116,10 @@ function makeId(prefix) {
 }
 
 function getApiError(error) {
-  const code = error?.response?.data?.detail?.code ?? error?.response?.data?.code ?? error?.code
-  if (ERROR_MESSAGES[code]) return ERROR_MESSAGES[code]
   if (error?.code === 'ERR_NETWORK' || !error?.response) {
-    return 'A required analysis service is offline. Start both backend services and retry.'
+    return 'The Python analysis service is offline. Start it on port 8000, then try again.'
   }
+  const code = error?.response?.data?.detail?.code
   return ERROR_MESSAGES[code] ?? 'Something went wrong. Please try again.'
 }
 
@@ -313,8 +303,6 @@ export function App() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState(0)
-  const [loadingStartedAtForOverlay, setLoadingStartedAtForOverlay] = useState(null)
-  const [loadingMinimumDurationMs, setLoadingMinimumDurationMs] = useState(MIN_ANALYSIS_LOADING_MS)
   const [error, setError] = useState('')
   const [uploadError, setUploadError] = useState('')
 
@@ -357,11 +345,10 @@ export function App() {
   useEffect(() => {
     if (!loading) return undefined
     const interval = window.setInterval(() => {
-      const elapsed = Date.now() - (loadingStartedAtForOverlay ?? Date.now())
-      setLoadingStep((currentStep) => Math.max(currentStep, getAnalysisLoadingStep(elapsed)))
-    }, 50)
+      setLoadingStep((curr) => Math.min(curr + 1, 2))
+    }, 2800)
     return () => window.clearInterval(interval)
-  }, [loading, loadingStartedAtForOverlay])
+  }, [loading])
 
   useEffect(() => {
     if (!loading) return undefined
@@ -422,16 +409,10 @@ export function App() {
     },
   })
 
-  const fetchQualityScore = async (resumeAnalysis, cacheIdentity, signal) => {
-    if (!cacheIdentity) {
-      const error = new Error('Resume cache identity is unavailable.')
-      error.code = 'persistent_cache_identity_mismatch'
-      throw error
-    }
+  const fetchQualityScore = async (resumeAnalysis, signal) => {
     try {
       const response = await axios.post(`${NODE_API}/api/resumes/quality-score`, {
         analysis: resumeAnalysis,
-        cacheIdentity,
       }, { signal })
       const result = response.data
       setQualityHistory((current) => {
@@ -459,20 +440,17 @@ export function App() {
       return result
     } catch (requestError) {
       if (isCanceledRequest(requestError)) throw requestError
-      throw requestError
+      return null
     }
   }
 
   const analyze = async ({ file, uploadSurface = 'inline' }) => {
-    const loadingStartedAt = Date.now()
-    setLoadingStartedAtForOverlay(loadingStartedAt)
     analysisAbortControllerRef.current?.abort()
     const abortController = new AbortController()
     analysisAbortControllerRef.current = abortController
 
     setLoading(true)
     setLoadingStep(0)
-    setLoadingMinimumDurationMs(MIN_ANALYSIS_LOADING_MS)
     setError('')
     setUploadError('')
     setRoleError('')
@@ -490,11 +468,6 @@ export function App() {
 
       const extractedAnalysis = response.data.analysis
       const extractedMetadata = response.data.metadata
-      const isCacheHit = extractedMetadata?.cacheStatus && extractedMetadata.cacheStatus !== 'fresh'
-      const minimumDurationMs = isCacheHit
-        ? MIN_CACHED_ANALYSIS_LOADING_MS
-        : MIN_ANALYSIS_LOADING_MS
-      setLoadingMinimumDurationMs(minimumDurationMs)
       const resumeId = makeId('analysis-report')
       const activeRoleId = careerPlanState.activePlan?.targetRoleId
 
@@ -517,11 +490,7 @@ export function App() {
             return null
           })
         }),
-        fetchQualityScore(
-          extractedAnalysis,
-          extractedMetadata?.cacheIdentity,
-          abortController.signal,
-        ),
+        fetchQualityScore(extractedAnalysis, abortController.signal),
       ])
 
       if (abortController.signal.aborted) {
@@ -554,14 +523,7 @@ export function App() {
       setStoreVersion((v) => v + 1)
       setIsUploadModalOpen(false)
       window.scrollTo({ top: 0, behavior: 'smooth' })
-      const navigated = await navigateAfterMinimumLoading({
-        startedAt: loadingStartedAt,
-        resumeId,
-        navigate,
-        signal: abortController.signal,
-        minimumDurationMs,
-      })
-      if (!navigated) return false
+      navigate(`/analysis/${resumeId}`)
       return true
     } catch (requestError) {
       if (isCanceledRequest(requestError) || abortController.signal.aborted) {
@@ -775,10 +737,7 @@ export function App() {
       {loading ? (
         <main className="enhancv-main-layout">
           <div className="enhancv-loading-container">
-            <LoadingOverlay
-              step={loadingStep}
-              startedAt={loadingStartedAtForOverlay}
-            />
+            <LoadingOverlay step={loadingStep} />
           </div>
         </main>
       ) : (

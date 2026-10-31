@@ -2701,6 +2701,7 @@
 .loading-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, #0f172a, #0f7656, #10b981);
+  transition: width 0.4s ease;
 }
 
 .loading-steps-pills {

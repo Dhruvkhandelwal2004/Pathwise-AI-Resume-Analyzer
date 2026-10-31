@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { BrainCircuit, Check } from 'lucide-react'
-import { getAnalysisProgressPercent } from '../utils/analysisLoading.js'
 
 const LOADING_STEPS = [
   'Reading resume safely in memory',
@@ -8,27 +7,9 @@ const LOADING_STEPS = [
   'Executing deterministic scoring & career matching',
 ]
 
-export function LoadingOverlay({ step = 0, startedAt }) {
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [dotCount, setDotCount] = useState(1)
+export function LoadingOverlay({ step = 0 }) {
   const currentStep = Math.min(step, LOADING_STEPS.length - 1)
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setDotCount((currentCount) => (currentCount >= 3 ? 1 : currentCount + 1))
-    }, 400)
-    return () => window.clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    if (startedAt == null) return undefined
-    const updateProgress = () => {
-      const nextProgress = getAnalysisProgressPercent(Date.now() - startedAt)
-      setProgressPercent((currentProgress) => Math.max(currentProgress, nextProgress))
-    }
-    const interval = window.setInterval(updateProgress, 50)
-    return () => window.clearInterval(interval)
-  }, [startedAt])
+  const progressPercent = Math.min(95, 25 + currentStep * 35)
 
   return (
     <div className="enhancv-loading-card card">
@@ -36,9 +17,7 @@ export function LoadingOverlay({ step = 0, startedAt }) {
         <BrainCircuit size={36} className="pulsing-brain" />
       </div>
 
-      <h2 aria-label="Analysing your resume...">
-        Analysing your resume<span aria-hidden="true">{'.'.repeat(dotCount)}</span>
-      </h2>
+      <h2>{LOADING_STEPS[currentStep]}</h2>
       <p className="loading-subtext">
         Analyzing explicit resume evidence with AI and deterministic rubrics. Please hold on.
       </p>

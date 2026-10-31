@@ -23,7 +23,6 @@ import {
 } from 'lucide-react'
 
 import { normalizeContactUrl } from '../utils/contactLinks.js'
-import { getDisplayedAtsScore } from '../utils/atsScoreDisplay.js'
 
 function hasText(val) {
   return typeof val === 'string' && val.trim().length > 0
@@ -109,8 +108,8 @@ export function AtsScorePage({
 
   const radius = 68
   const circumference = 2 * Math.PI * radius
-  const displayedScore = getDisplayedAtsScore(score)
-  const strokeDashoffset = circumference - (displayedScore / 100) * circumference
+  const clampedScore = Math.max(0, Math.min(100, score))
+  const strokeDashoffset = circumference - (clampedScore / 100) * circumference
 
   const criteria = quality?.criteria ?? []
   const improvements = quality?.improvements ?? []
@@ -230,7 +229,7 @@ export function AtsScorePage({
                 />
               </svg>
               <div className="ag-ats-ring-center">
-                <span className="ag-ats-ring-number">{displayedScore}</span>
+                <span className="ag-ats-ring-number">{clampedScore}</span>
                 <span className="ag-ats-ring-sub">OUT OF 100</span>
               </div>
             </div>
@@ -248,7 +247,7 @@ export function AtsScorePage({
             </div>
 
             <p className="ag-ats-summary-copy">
-              Your resume scored <strong>{displayedScore}/100</strong>. It is currently rated as{' '}
+              Your resume scored <strong>{clampedScore}/100</strong>. It is currently rated as{' '}
               <span className="ag-ats-rating-highlight">{ratingWord}</span>.{' '}
               {improvements.length > 0 ? (
                 <>
@@ -527,7 +526,7 @@ export function AtsScorePage({
               <span className="ag-ats-section-eyebrow">TRANSPARENT 100-POINT RUBRIC</span>
               <h3>Category-Wise Score Breakdown</h3>
             </div>
-            <span className="ag-rubric-sum-pill">Total: {displayedScore} / 100 pts</span>
+            <span className="ag-rubric-sum-pill">Total: {clampedScore} / 100 pts</span>
           </div>
 
           <div className="ag-rubric-accordions">
