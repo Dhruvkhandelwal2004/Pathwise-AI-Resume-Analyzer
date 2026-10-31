@@ -4218,6 +4218,14 @@
   transform: translateX(20px);
 }
 
+.ag-toolbar-right.is-unavailable {
+  opacity: 0.48;
+}
+
+.ag-toggle-switch:disabled {
+  cursor: not-allowed;
+}
+
 .ag-matcher-alert {
   margin: 12px 28px 0;
   padding: 10px 14px;

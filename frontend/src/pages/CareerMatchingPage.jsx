@@ -201,6 +201,11 @@ export function CareerMatchingPage({
     return map
   }, [career, careerByRoleId])
 
+  const hasRoleMatch = Object.values(benchmarkByRoleId).some(
+    (match) => Number.isFinite(match?.score) && match.score > 0,
+  )
+  const autoMatchActive = autoMatch && hasRoleMatch
+
   const categories = useMemo(() => {
     const set = new Set(['All'])
     catalogueRoles.forEach((r) => {
@@ -247,7 +252,7 @@ export function CareerMatchingPage({
       }
     })
 
-    if (autoMatch) {
+    if (autoMatchActive) {
       enriched.sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     } else {
       const selectedIndex = enriched.findIndex((role) => role.roleId === currentRoleId)
@@ -262,7 +267,7 @@ export function CareerMatchingPage({
     career,
     benchmarkByRoleId,
     selectedCategory,
-    autoMatch,
+    autoMatchActive,
     currentRoleId,
   ])
 
@@ -277,7 +282,7 @@ export function CareerMatchingPage({
   }, [displayedRoles])
 
   useEffect(() => {
-    if (!autoMatch || !bestMatchingRoleId || initialAutoMatchAppliedRef.current) {
+    if (!autoMatchActive || !bestMatchingRoleId || initialAutoMatchAppliedRef.current) {
       return
     }
 
@@ -286,10 +291,10 @@ export function CareerMatchingPage({
     if (bestMatchingRoleId !== currentRoleId) {
       onSelectRole(bestMatchingRoleId)
     }
-  }, [autoMatch, bestMatchingRoleId, currentRoleId, onSelectRole, resumeId])
+  }, [autoMatchActive, bestMatchingRoleId, currentRoleId, onSelectRole, resumeId])
 
   const handleRoleSelection = (roleId) => {
-    if (autoMatch && roleId !== currentRoleId) {
+    if (autoMatchActive && roleId !== currentRoleId) {
       saveAutoMatchPreference(false)
       setAutoMatch(false)
     }
@@ -297,7 +302,8 @@ export function CareerMatchingPage({
   }
 
   const handleAutoMatchToggle = () => {
-    const nextAutoMatch = !autoMatch
+    if (!hasRoleMatch) return
+    const nextAutoMatch = !autoMatchActive
     saveAutoMatchPreference(nextAutoMatch)
     setAutoMatch(nextAutoMatch)
 
@@ -486,18 +492,21 @@ export function CareerMatchingPage({
             </div>
           </div>
 
-          <div className="ag-toolbar-right">
+          <div className={`ag-toolbar-right${hasRoleMatch ? '' : ' is-unavailable'}`}>
             <div className="ag-automatch-label">
               <span className="ag-automatch-title">
                 <Sparkles size={13} /> Auto-match
               </span>
-              <small>Auto-rank jobs by your profile</small>
+              <small>{hasRoleMatch ? 'Auto-rank jobs by your profile' : 'No matching roles found'}</small>
             </div>
             <button
               type="button"
               role="switch"
-              aria-checked={autoMatch}
-              className={`ag-toggle-switch ${autoMatch ? 'is-on' : ''}`}
+              aria-checked={autoMatchActive}
+              aria-label={hasRoleMatch ? 'Auto-match roles' : 'Auto-match unavailable because no roles matched'}
+              title={hasRoleMatch ? 'Auto-rank jobs by your profile' : 'No matching roles found'}
+              disabled={!hasRoleMatch}
+              className={`ag-toggle-switch ${autoMatchActive ? 'is-on' : ''}`}
               onClick={handleAutoMatchToggle}
             >
               <span className="ag-toggle-knob" />
